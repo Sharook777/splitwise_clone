@@ -10,6 +10,7 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await HiveService.init();
   final bool isLoggedIn = await SessionService.isLoggedIn();
+  FlutterNativeSplash.remove();
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFFFE742A),
         ),
         primaryColor: const Color(0xFFFE742A),
+        scaffoldBackgroundColor: const Color(0xFFECECEC),
         useMaterial3: true,
       ),
       home: isLoggedIn ? const HomeScreen() : const WelcomeScreen(),

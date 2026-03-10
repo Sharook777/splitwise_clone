@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../services/auth_service.dart';
 import '../services/session_service.dart';
 import '../utils/page_transitions.dart';
+import 'friends_screen.dart';
+import 'account_screen.dart';
 import 'welcome_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,102 +16,173 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 1; // "Home" is middle (index 1)
+  int _selectedIndex = 0; // "Home" is index 1
 
   @override
   Widget build(BuildContext context) {
     final themeColor = Theme.of(context).primaryColor;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          'Dutch',
-          style: TextStyle(
-            color: themeColor,
-            fontWeight: FontWeight.w900,
-            fontSize: 24,
-            letterSpacing: -1,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20.0),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: themeColor.withOpacity(0.1),
-              child: Icon(Icons.person_rounded, color: themeColor, size: 22),
-            ),
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
+        child: Column(
           children: [
-            // Groups Tab
-            _buildTabContent(
-              title: "Groups",
-              description: "Manage your expense sharing groups",
-              icon: Icons.group_rounded,
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  // Home Tab
+                  _buildHomeContent(themeColor),
+                  // Groups Tab
+                  _buildTabContent(
+                    title: "Groups",
+                    description: "Manage your expense sharing groups",
+                    icon: Icons.group_rounded,
+                  ),
+                  // Friends Tab
+                  const FriendsScreen(),
+                  // Profile Tab
+                  AccountScreen(
+                    onBack: () {
+                      setState(() {
+                        _selectedIndex = 0;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
-            // Home Tab
-            _buildHomeContent(themeColor),
-            // Friends Tab
-            _buildTabContent(
-              title: "Friends",
-              description: "Keep track of friends you owe",
-              icon: Icons.person_add_alt_1_rounded,
+            // Custom Floating Navigation Bar
+            Container(
+              margin: const EdgeInsets.fromLTRB(15, 0, 15, 15),
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 0),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(0, HugeIconsStrokeRounded.home09, 'Home'),
+                  _buildNavItem(1, HugeIconsStrokeRounded.userGroup, 'Groups'),
+                  _buildNavItem(2, HugeIconsStrokeRounded.user, 'Friends'),
+                  _buildProfileNavItem(3),
+                ],
+              ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+    );
+  }
+
+  Widget _buildNavItem(int index, dynamic icon, String label) {
+    final isActive = _selectedIndex == index;
+    final themeColor = Theme.of(context).primaryColor;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedIndex = index),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? themeColor.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: AnimatedScale(
+                scale: isActive ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+                child: HugeIcon(
+                  icon: icon,
+                  size: 24.0,
+                  color: isActive ? themeColor : Colors.black54,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? themeColor : Colors.black54,
+              ),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: themeColor,
-          unselectedItemColor: Colors.grey[400],
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          backgroundColor: Colors.white,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.group_outlined),
-              activeIcon: Icon(Icons.group_rounded),
-              label: 'Groups',
+      ),
+    );
+  }
+
+  Widget _buildProfileNavItem(int index) {
+    final isActive = _selectedIndex == index;
+    final themeColor = Theme.of(context).primaryColor;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedIndex = index),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isActive ? themeColor : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: FutureBuilder<String?>(
+                future: SessionService.getUserName(),
+                builder: (context, snapshot) {
+                  final initial = snapshot.data?.isNotEmpty == true
+                      ? snapshot.data![0].toUpperCase()
+                      : 'U';
+                  return CircleAvatar(
+                    radius: 14,
+                    backgroundColor: themeColor.withValues(
+                      alpha: isActive ? 1.0 : 0.1,
+                    ),
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isActive ? Colors.white : themeColor,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Friends',
+            const SizedBox(height: 4),
+            Text(
+              'Account',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? themeColor : Colors.black54,
+              ),
             ),
           ],
         ),
@@ -163,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.receipt_long_rounded,
                     size: 80,
-                    color: themeColor.withOpacity(0.3),
+                    color: themeColor.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 20),
                   Text(

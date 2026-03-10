@@ -41,6 +41,7 @@ dependencies:
   shared_preferences: ^2.5.4
   path: ^1.9.1
   flutter_native_splash: ^2.4.0
+  hugeicons: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -64,7 +65,7 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/splash_logo.png # your logo (optional)
+  background_image: assets/splash_logo.png
   android: true
   ios: true
   web: true
@@ -108,3 +109,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_name:
+  name: "DUTCH"
