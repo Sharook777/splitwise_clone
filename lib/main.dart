@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home_screen.dart';
@@ -8,6 +9,7 @@ import 'services/session_service.dart';
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await HiveService.init();
   final bool isLoggedIn = await SessionService.isLoggedIn();
   FlutterNativeSplash.remove();

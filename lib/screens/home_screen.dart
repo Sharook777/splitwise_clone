@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/session_service.dart';
 import '../utils/page_transitions.dart';
 import 'friends_screen.dart';
+import 'groups_screen.dart';
 import 'account_screen.dart';
 import 'welcome_screen.dart';
 
@@ -33,11 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Home Tab
                   _buildHomeContent(themeColor),
                   // Groups Tab
-                  _buildTabContent(
-                    title: "Groups",
-                    description: "Manage your expense sharing groups",
-                    icon: Icons.group_rounded,
-                  ),
+                  const GroupsScreen(),
                   // Friends Tab
                   const FriendsScreen(),
                   // Profile Tab
@@ -288,35 +285,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabContent({
-    required String title,
-    required String description,
-    required IconData icon,
-  }) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: TextStyle(fontSize: 15, color: Colors.grey[500]),
-          ),
         ],
       ),
     );

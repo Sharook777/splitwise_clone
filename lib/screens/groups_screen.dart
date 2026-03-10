@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import '../models/user_model.dart';
+import '../models/group_model.dart';
 import '../services/database_service.dart';
 import '../services/session_service.dart';
 
-class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({super.key});
+class GroupsScreen extends StatefulWidget {
+  const GroupsScreen({super.key});
 
   @override
-  State<FriendsScreen> createState() => _FriendsScreenState();
+  State<GroupsScreen> createState() => _GroupsScreenState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> {
-  List<User> _friends = [];
-  List<User> _searchResults = [];
+class _GroupsScreenState extends State<GroupsScreen> {
+  List<Group> _groups = [];
+  List<Group> _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
   String? _currentUserEmail;
@@ -23,7 +23,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFriends();
+    _loadGroups();
   }
 
   @override
@@ -32,17 +32,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadFriends() async {
+  Future<void> _loadGroups() async {
     setState(() => _isLoading = true);
-    _currentUserEmail = await SessionService.getUserEmail();
-    if (_currentUserEmail != null) {
-      final friends = await DatabaseService.getFriends(_currentUserEmail!);
-      setState(() {
-        _friends = friends;
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
+    try {
+      _currentUserEmail = await SessionService.getUserEmail();
+      if (_currentUserEmail != null) {
+        final groups = await DatabaseService.getGroupsForUser(
+          _currentUserEmail!,
+        );
+        setState(() {
+          _groups = groups;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading groups: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to load groups')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -52,7 +64,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       return;
     }
     if (_currentUserEmail != null) {
-      final results = await DatabaseService.searchUsers(
+      final results = await DatabaseService.searchGroups(
         query,
         _currentUserEmail!,
       );
@@ -60,39 +72,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
   }
 
-  void _showAddFriendDialog() {
+  void _showCreateGroupDialog() {
     final formKey = GlobalKey<FormState>();
     String name = '';
-    String email = '';
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Friend'),
+        title: const Text('Add Group'),
         content: Form(
           key: formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Name'),
+                decoration: const InputDecoration(labelText: 'Group Name'),
                 validator: (value) => value == null || value.isEmpty
                     ? 'Please enter a name'
                     : null,
                 onSaved: (value) => name = value!,
-              ),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Please enter an email';
-                  if (!RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  ).hasMatch(value))
-                    return 'Please enter a valid email';
-                  return null;
-                },
-                onSaved: (value) => email = value!,
               ),
             ],
           ),
@@ -109,20 +107,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 Navigator.pop(context);
 
                 if (_currentUserEmail != null) {
-                  // Check if user exists, else create
-                  final existingUser = await DatabaseService.getUserByEmail(
-                    email,
-                  );
-                  if (existingUser == null) {
-                    await DatabaseService.insertUser(
-                      User(name: name, email: email),
-                    );
-                  }
-                  await DatabaseService.addFriend(_currentUserEmail!, email);
-                  _loadFriends();
+                  await DatabaseService.createGroup(name, _currentUserEmail!);
+                  _loadGroups();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$name added as friend')),
+                      SnackBar(content: Text('$name group created')),
                     );
                   }
                 }
@@ -152,7 +141,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : (_isSearching ? _searchResults : _friends).isEmpty
+              : (_isSearching ? _searchResults : _groups).isEmpty
               ? _buildEmptyState(themeColor)
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(
@@ -161,16 +150,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                   itemCount: _isSearching
                       ? _searchResults.length
-                      : _friends.length,
+                      : _groups.length,
                   itemBuilder: (context, index) {
-                    final user = _isSearching
+                    final group = _isSearching
                         ? _searchResults[index]
-                        : _friends[index];
-                    return _buildUserTile(
-                      user,
-                      themeColor,
-                      isSearchResult: _isSearching,
-                    );
+                        : _groups[index];
+                    return _buildGroupTile(group, themeColor);
                   },
                 ),
         ),
@@ -194,9 +179,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ),
             ),
             IconButton(
-              onPressed: _showAddFriendDialog,
+              onPressed: _showCreateGroupDialog,
               icon: HugeIcon(
-                icon: HugeIconsStrokeRounded.userAdd01,
+                icon: HugeIconsStrokeRounded
+                    .userGroup, // Changed to userGroup for groups
                 color: Colors.grey[800]!,
                 size: 24,
               ),
@@ -220,7 +206,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               color: Colors.black87,
             ),
             decoration: InputDecoration(
-              hintText: 'Search friends...',
+              hintText: 'Search groups...',
               hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
               prefixIcon: SizedBox(
                 width: 35,
@@ -280,9 +266,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
         ),
         const SizedBox(width: 8),
         IconButton(
-          onPressed: _showAddFriendDialog,
+          onPressed: _showCreateGroupDialog,
           icon: HugeIcon(
-            icon: HugeIconsStrokeRounded.userAdd01,
+            icon: HugeIconsStrokeRounded.userGroup,
             color: Colors.grey[800]!,
             size: 24,
           ),
@@ -291,16 +277,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  Widget _buildUserTile(
-    User user,
-    Color themeColor, {
-    bool isSearchResult = false,
-  }) {
-    final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U';
-    // Check if user is already a friend if it's a search result
-    final isAlreadyFriend =
-        !isSearchResult ||
-        _friends.any((f) => f.email.toLowerCase() == user.email.toLowerCase());
+  Widget _buildGroupTile(Group group, Color themeColor) {
+    final initial = group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -323,38 +301,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
         ),
         title: Text(
-          user.name,
+          group.name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Text(
-          user.email,
+          'Group ID: ${group.id}',
           style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
-        trailing: isSearchResult && !isAlreadyFriend
-            ? IconButton(
-                icon: const Icon(Icons.person_add_alt_1_rounded),
-                onPressed: () async {
-                  if (_currentUserEmail != null) {
-                    await DatabaseService.addFriend(
-                      _currentUserEmail!,
-                      user.email,
-                    );
-                    _loadFriends();
-                    setState(() {
-                      _isSearching = false;
-                      _searchController.clear();
-                      _searchResults = [];
-                    });
-                  }
-                },
-              )
-            : Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: Colors.grey[400],
-              ),
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 16,
+          color: Colors.grey[400],
+        ),
         onTap: () {
-          // Future: Navigate to friend details or balance
+          // Future: Navigate to group details/expenses
         },
       ),
     );
@@ -376,7 +336,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              _isSearching ? 'No friends found' : 'No friends yet',
+              _isSearching ? 'No groups found' : 'No groups yet',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -386,8 +346,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
             const SizedBox(height: 8),
             Text(
               _isSearching
-                  ? 'Try searching for a different name or email.'
-                  : 'Add friends to start splitting expenses!',
+                  ? 'Try searching for a different group name.'
+                  : 'Create a group to start splitting expenses with multiple people!',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, color: Colors.grey[500]),
             ),
