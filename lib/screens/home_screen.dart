@@ -96,12 +96,12 @@ class _HomeScreenState extends State<HomeScreen> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: isActive
-                    ? themeColor.withValues(alpha: 0.1)
+                    ? themeColor.withValues(alpha: 1.0)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
               ),
               child: AnimatedScale(
                 scale: isActive ? 1.1 : 1.0,
@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: HugeIcon(
                   icon: icon,
                   size: 24.0,
-                  color: isActive ? themeColor : Colors.black54,
+                  color: isActive ? Colors.white : Colors.black54,
                   strokeWidth: 2,
                 ),
               ),
@@ -147,10 +147,10 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: isActive ? themeColor : Colors.transparent,
-                  width: 2,
-                ),
+                // border: Border.all(
+                //   color: isActive ? themeColor : Colors.transparent,
+                //   width: 2,
+                // ),
               ),
               child: FutureBuilder<String?>(
                 future: SessionService.getUserName(),
@@ -159,14 +159,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? snapshot.data![0].toUpperCase()
                       : 'U';
                   return CircleAvatar(
-                    radius: 14,
+                    radius: 18,
                     backgroundColor: themeColor.withValues(
                       alpha: isActive ? 1.0 : 0.1,
                     ),
                     child: Text(
                       initial,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: isActive ? Colors.white : themeColor,
                       ),

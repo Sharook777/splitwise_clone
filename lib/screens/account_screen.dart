@@ -77,7 +77,7 @@ class AccountScreen extends StatelessWidget {
                             child: Text(
                               initial,
                               style: TextStyle(
-                                fontSize: 30,
+                                fontSize: 35,
                                 color: Colors.white,
                               ),
                             ),
