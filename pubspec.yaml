@@ -40,6 +40,7 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences: ^2.5.4
   path: ^1.9.1
+  flutter_native_splash: ^2.4.0
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +61,13 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk version
   # adaptive_icon_background: "#FF7020" # Use the hex code of your orange background
   # adaptive_icon_foreground: "assets/images/app_logo.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/splash_logo.png # your logo (optional)
+  android: true
+  ios: true
+  web: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
