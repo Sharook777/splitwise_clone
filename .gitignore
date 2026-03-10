@@ -1,0 +1,61 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configurations and tasks you actually want to
+# potentially check in. Many projects choose to keep them.
+# .vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+__pycache__/
+build/
+
+# Android related
+**/android/**/generated/
+**/android/app/debug/
+**/android/app/release/
+**/android/key.properties
+**/android/local.properties
+**/android/sdk.dir
+**/android/standard_encryption_key.json
+*.keystore
+*.jks
+
+# iOS related
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Pods/
+**/ios/Runner.abspath.vicfg
+**/ios/Runner.indexcache
+**/ios/Runner.xcworkspace/xcuserdata/
+
+# Symbols and settings for Android Studio
+.cxx/
+*.apk
+*.aar
+*.bundle
+*.rb
