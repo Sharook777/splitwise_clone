@@ -182,7 +182,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               onPressed: _showCreateGroupDialog,
               icon: HugeIcon(
                 icon: HugeIconsStrokeRounded
-                    .userGroup, // Changed to userGroup for groups
+                    .addSquare, // Changed to userGroup for groups
                 color: Colors.grey[800]!,
                 size: 24,
               ),
@@ -268,7 +268,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         IconButton(
           onPressed: _showCreateGroupDialog,
           icon: HugeIcon(
-            icon: HugeIconsStrokeRounded.userGroup,
+            icon: HugeIconsStrokeRounded.addSquare,
             color: Colors.grey[800]!,
             size: 24,
           ),

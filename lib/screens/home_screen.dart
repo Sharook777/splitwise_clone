@@ -27,27 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Expanded(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  // Home Tab
-                  _buildHomeContent(themeColor),
-                  // Groups Tab
-                  const GroupsScreen(),
-                  // Friends Tab
-                  const FriendsScreen(),
-                  // Profile Tab
-                  AccountScreen(
-                    onBack: () {
-                      setState(() {
-                        _selectedIndex = 0;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: _buildSelectedScreen(themeColor)),
             // Custom Floating Navigation Bar
             Container(
               margin: const EdgeInsets.fromLTRB(15, 0, 15, 15),
@@ -57,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: const BorderRadius.all(Radius.circular(10)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 0),
                   ),
@@ -97,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isActive
-                    ? themeColor.withValues(alpha: 1.0)
+                    ? themeColor.withOpacity(1.0)
                     : Colors.transparent,
               ),
               child: AnimatedScale(
@@ -157,8 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       : 'U';
                   return CircleAvatar(
                     radius: 18,
-                    backgroundColor: themeColor.withValues(
-                      alpha: isActive ? 1.0 : 0.1,
+                    backgroundColor: themeColor.withOpacity(
+                      isActive ? 1.0 : 0.1,
                     ),
                     child: Text(
                       initial,
@@ -235,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.receipt_long_rounded,
                     size: 80,
-                    color: themeColor.withValues(alpha: 0.3),
+                    color: themeColor.withOpacity(0.3),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -288,5 +268,26 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSelectedScreen(Color themeColor) {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildHomeContent(themeColor);
+      case 1:
+        return const GroupsScreen();
+      case 2:
+        return const FriendsScreen();
+      case 3:
+        return AccountScreen(
+          onBack: () {
+            setState(() {
+              _selectedIndex = 0;
+            });
+          },
+        );
+      default:
+        return _buildHomeContent(themeColor);
+    }
   }
 }

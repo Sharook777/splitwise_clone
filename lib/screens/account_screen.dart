@@ -17,14 +17,12 @@ class AccountScreen extends StatelessWidget {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
-        statusBarColor: themeColor,
+        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         systemNavigationBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        extendBodyBehindAppBar: true, // extend behind app bar
-        extendBody: true, // extend behind bottom nav bar
-        backgroundColor: Colors.white, // this color bleeds into status bar
+        backgroundColor: themeColor, // this color bleeds into status bar
         body: SingleChildScrollView(
           child: Column(
             children: [
@@ -86,9 +84,7 @@ class AccountScreen extends StatelessWidget {
                                   : 'U';
                               return CircleAvatar(
                                 radius: 45,
-                                backgroundColor: themeColor.withValues(
-                                  alpha: 0.1,
-                                ),
+                                backgroundColor: themeColor.withOpacity(0.1),
                                 child: Text(
                                   initial,
                                   style: TextStyle(
@@ -201,7 +197,7 @@ class AccountScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.8),
+          color: Colors.white.withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: HugeIcon(
