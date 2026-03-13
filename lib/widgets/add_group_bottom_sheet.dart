@@ -290,7 +290,19 @@ class _AddGroupBottomSheetState extends State<AddGroupBottomSheet> {
       try {
         final currentUserEmail = await SessionService.getUserEmail();
         if (currentUserEmail != null) {
-          await DatabaseService.createGroup(_groupName, currentUserEmail);
+          final currentUser = await DatabaseService.getUserByEmail(
+            currentUserEmail,
+          );
+          if (currentUser == null || currentUser.id == null) {
+            _showErrorDialog('User not found');
+            return;
+          }
+
+          await DatabaseService.createGroup(
+            _groupName,
+            currentUserEmail,
+            currentUser.id!,
+          );
 
           if (mounted) {
             Navigator.pop(context);

@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../services/session_service.dart';
 import '../widgets/add_group_bottom_sheet.dart';
 import '../widgets/shimmer_loading.dart';
+import 'group_detail_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -110,7 +111,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: Color(0xFFECECEC),
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
@@ -136,7 +137,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     ? _buildEmptyState(themeColor)
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
+                          horizontal: 15,
                           vertical: 10,
                         ),
                         itemCount: _isSearching
@@ -307,8 +308,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   Widget _buildGroupTile(Group group, Color themeColor) {
-    final initial = group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -316,16 +315,19 @@ class _GroupsScreenState extends State<GroupsScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        leading: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
-          child: HugeIcon(
-            icon: HugeIconsStrokeRounded.bitcoinBag,
-            color: themeColor,
-            size: 20,
-            strokeWidth: 2,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+        leading: Hero(
+          tag: 'group-icon-${group.id}',
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+            child: HugeIcon(
+              icon: HugeIconsStrokeRounded.bitcoinBag,
+              color: themeColor,
+              size: 20,
+              strokeWidth: 2,
+            ),
           ),
         ),
         title: Text(
@@ -342,7 +344,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
           color: Colors.grey[400],
         ),
         onTap: () {
-          // Future: Navigate to group details/expenses
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GroupDetailScreen(group: group),
+            ),
+          ).then((_) => _loadGroups());
         },
       ),
     );

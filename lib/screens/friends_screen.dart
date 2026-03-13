@@ -99,7 +99,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: Color(0xFFECECEC),
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
