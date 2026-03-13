@@ -112,394 +112,426 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final themeColor = Theme.of(context).primaryColor;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFECECEC),
-      appBar: AppBar(
-        title: const Text(
-          'Add Expense',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const HugeIcon(
-            icon: HugeIconsStrokeRounded.cancel01,
-            color: Colors.black,
-            size: 24,
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: TextButton(
-              onPressed: _onSave,
-              child: Text(
-                'Save',
-                style: TextStyle(
-                  color: themeColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Section
-            Container(
-              padding: const EdgeInsets.all(24),
-              color: Colors.white,
-              child: Column(
-                children: [
-                  Row(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFECECEC),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: HugeIcon(
-                          icon: HugeIconsStrokeRounded.invoice01,
-                          color: themeColor,
-                          size: 24,
+                      _buildHeaderIcon(
+                        HugeIconsStrokeRounded.arrowLeft01,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        'Add Expense',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _descriptionController,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Enter a description',
-                            hintStyle: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 18,
-                              fontWeight: FontWeight.normal,
-                            ),
-                            border: InputBorder.none,
-                          ),
-                        ),
+                      _buildHeaderSaveButton(
+                        HugeIconsStrokeRounded.checkmarkCircle02,
+                        onTap: _onSave,
+                        iconColor: themeColor,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          widget.group.currency?.split(' ').first ?? 'USD',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                ),
+              ),
+              // Header Section
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15),
+                padding: const EdgeInsets.only(
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(left: 65),
+                          child: Text(
+                            'Amount',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
+                        TextField(
                           controller: _amountController,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d+\.?\d{0,2}'),
+                              RegExp(r'^\d{0,6}(\.?\d{0,2})'),
                             ),
                           ],
                           style: const TextStyle(
-                            fontSize: 36,
+                            fontSize: 38,
                             fontWeight: FontWeight.bold,
+                            height: 1.1,
+                            letterSpacing: -1,
                           ),
                           decoration: InputDecoration(
                             hintText: '0.00',
                             hintStyle: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 36,
+                              color: Colors.grey[200],
+                              fontSize: 38,
+                              height: 1.1,
+                            ),
+                            filled: true,
+                            fillColor: themeColor.withValues(alpha: 0.01),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 8,
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 0,
+                                right: 12,
+                              ),
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${widget.group.currency?.split(' ').first ?? '\$'} ',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: themeColor,
+                                        fontSize: 24,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                             border: InputBorder.none,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Info Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  _buildActionButton(
-                    icon: HugeIconsStrokeRounded.calendar03,
-                    label: DateFormat('dd MMM, yyyy').format(_selectedDate),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.light(
-                                primary: themeColor,
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (date != null) {
-                        setState(() => _selectedDate = date);
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  _buildActionButton(
-                    icon: HugeIconsStrokeRounded.folder01,
-                    label: 'General',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Paid By Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Paid by',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: _showPaidByDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: themeColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                _paidBy?.name ?? 'Select',
-                                style: TextStyle(
-                                  color: themeColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                color: themeColor,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Split Logic Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Split',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: _showSplitTypeDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                _splitType,
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.grey,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Split List
-                  ...widget.members.map((member) {
-                    bool isSelected = _selectedSplitMembers.any(
-                      (m) => m.email == member.email,
-                    );
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          _splitType == 'Equally'
-                              ? Checkbox(
-                                  value: isSelected,
-                                  activeColor: themeColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      if (val == true) {
-                                        _selectedSplitMembers.add(member);
-                                      } else {
-                                        if (_selectedSplitMembers.length > 1) {
-                                          _selectedSplitMembers.removeWhere(
-                                            (m) => m.email == member.email,
-                                          );
-                                        }
-                                      }
-                                    });
-                                  },
-                                )
-                              : Container(
-                                  width: 48,
-                                  alignment: Alignment.centerLeft,
-                                  child: isSelected
-                                      ? Icon(
-                                          Icons.check_circle,
-                                          color: themeColor,
-                                          size: 24,
-                                        )
-                                      : Icon(
-                                          Icons.circle_outlined,
-                                          color: Colors.grey[300],
-                                          size: 24,
-                                        ),
-                                ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              member.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
+                        const SizedBox(height: 30),
+                        Container(
+                          margin: const EdgeInsets.only(left: 65),
+                          child: Text(
+                            'Description',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (_splitType != 'Equally')
+                        ),
+                        Row(
+                          children: [
                             Container(
-                              width: 80,
-                              height: 40,
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F5F5),
-                                borderRadius: BorderRadius.circular(8),
+                                color: themeColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
                               ),
+                              child: HugeIcon(
+                                icon: HugeIconsStrokeRounded.note01,
+                                color: themeColor,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
                               child: TextField(
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
+                                controller: _descriptionController,
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 decoration: InputDecoration(
+                                  hintText: 'Enter a description',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.normal,
+                                  ),
                                   border: InputBorder.none,
-                                  hintText: _splitType == 'Percentage'
-                                      ? '0%'
-                                      : '0',
-                                  suffixText: _splitType == 'Percentage'
-                                      ? '%'
-                                      : null,
                                 ),
-                                onChanged: (val) {
-                                  double d = double.tryParse(val) ?? 0.0;
-                                  setState(
-                                    () => _splitValues[member.email] = d,
-                                  );
-                                },
                               ),
                             ),
-                          if (_splitType == 'Equally')
-                            Text(
-                              _calculateEqualSplit(member.email),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.grey[300],
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 100),
-          ],
+              // Info Bar (Sleeker Pills)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 15,
+                ),
+                child: Row(
+                  children: [
+                    _buildActionButton(
+                      themeColor: themeColor,
+                      icon: HugeIconsStrokeRounded.calendar03,
+                      label: DateFormat('dd MMM, yyyy').format(_selectedDate),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: themeColor,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (date != null) {
+                          setState(() => _selectedDate = date);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // Paid By & Split Section (Integrated)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15),
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: _buildSelectionTile(
+                  title: 'Paid by',
+                  value: _paidBy?.name ?? 'Select',
+                  icon: HugeIconsStrokeRounded.userCircle,
+                  onTap: _showPaidByDialog,
+                  themeColor: themeColor,
+                ),
+              ),
+              const SizedBox(height: 15),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15),
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: _buildSelectionTile(
+                  title: 'Split',
+                  value: _splitType,
+                  icon: HugeIconsStrokeRounded.divideSign,
+                  onTap: _showSplitTypeDialog,
+                  themeColor: themeColor,
+                  isSecondary: true,
+                ),
+              ),
+
+              // Split List (Currency Listing Style)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 15,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SPLIT WITH',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    ...widget.members.map((member) {
+                      bool isSelected = _selectedSplitMembers.any(
+                        (m) => m.email == member.email,
+                      );
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 15),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? themeColor.withOpacity(0.05)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? themeColor : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    if (_selectedSplitMembers.length > 1) {
+                                      _selectedSplitMembers.removeWhere(
+                                        (m) => m.email == member.email,
+                                      );
+                                    }
+                                  } else {
+                                    _selectedSplitMembers.add(member);
+                                  }
+                                });
+                              },
+                              child: HugeIcon(
+                                icon: isSelected
+                                    ? HugeIconsStrokeRounded.checkmarkCircle02
+                                    : HugeIconsStrokeRounded.circle,
+                                color: isSelected
+                                    ? themeColor
+                                    : Colors.grey[300]!,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    member.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: isSelected
+                                          ? themeColor
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    member.email,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.normal,
+                                      fontSize: 12,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  if (isSelected && _splitType == 'Equally')
+                                    Text(
+                                      '${widget.group.currency?.split(' ').first ?? 'USD'} ${_calculateEqualSplit(member.email)}',
+                                      style: TextStyle(
+                                        color: themeColor.withOpacity(0.7),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (_splitType != 'Equally' && isSelected)
+                              Container(
+                                width: 100,
+                                // height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: TextField(
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'^\d{0,6}(\.?\d{0,2})'),
+                                    ),
+                                  ],
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.normal,
+                                    height: 1,
+                                    color: themeColor,
+                                  ),
+
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    hintText: _splitType == 'Percentage'
+                                        ? '0%'
+                                        : '0',
+                                    suffixText: _splitType == 'Percentage'
+                                        ? '%'
+                                        : null,
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                      height: 1,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 8,
+                                    ),
+                                    suffixStyle: TextStyle(
+                                      color: themeColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                  onChanged: (val) {
+                                    double d = double.tryParse(val) ?? 0.0;
+                                    setState(
+                                      () => _splitValues[member.email] = d,
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
     );
@@ -516,33 +548,112 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     required dynamic icon,
     required String label,
     required VoidCallback onTap,
+    required dynamic themeColor,
   }) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[100]!),
-            borderRadius: BorderRadius.circular(12),
-            color: const Color(0xFFFAFAFA),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[200]!),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: themeColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: HugeIcon(icon: icon, color: themeColor, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionTile({
+    required String title,
+    required String value,
+    required dynamic icon,
+    required VoidCallback onTap,
+    required Color themeColor,
+    bool isSecondary = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: themeColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: HugeIcon(icon: icon, size: 20, color: themeColor),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              HugeIcon(icon: icon, size: 18, color: Colors.grey[600]!),
-              const SizedBox(width: 8),
               Text(
-                label,
+                title,
                 style: TextStyle(
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
             ],
           ),
-        ),
+          const Spacer(),
+          const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+        ],
       ),
     );
   }
@@ -675,6 +786,56 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         });
         Navigator.pop(context);
       },
+    );
+  }
+
+  Widget _buildHeaderIcon(
+    dynamic icon, {
+    VoidCallback? onTap,
+    Color iconColor = Colors.black,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: HugeIcon(icon: icon, color: iconColor, size: 24, strokeWidth: 2),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSaveButton(
+    dynamic icon, {
+    VoidCallback? onTap,
+    Color iconColor = Colors.black,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: iconColor,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            HugeIcon(icon: icon, color: Colors.white, size: 24, strokeWidth: 2),
+            const SizedBox(width: 10),
+            Text(
+              "Save",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
