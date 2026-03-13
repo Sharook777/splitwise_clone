@@ -452,18 +452,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                       color: Colors.black87,
                                     ),
                                   ),
-                                  if (isSelected && _splitType == 'Equally')
-                                    Text(
-                                      '${widget.group.currency?.split(' ').first ?? 'USD'} ${_calculateEqualSplit(member.email)}',
-                                      style: TextStyle(
-                                        color: themeColor.withOpacity(0.7),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
                                 ],
                               ),
                             ),
+                            if (isSelected && _splitType == 'Equally')
+                              Text(
+                                '${widget.group.currency?.split(' ').first ?? '\$'} ${_calculateEqualSplit(member.email)}',
+                                style: TextStyle(
+                                  color: themeColor.withOpacity(0.7),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             if (_splitType != 'Equally' && isSelected)
                               Container(
                                 width: 100,
