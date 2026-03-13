@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../models/group_model.dart';
 import '../services/database_service.dart';
 import '../services/session_service.dart';
+import '../widgets/add_group_bottom_sheet.dart';
+import '../widgets/shimmer_loading.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -17,8 +21,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
   List<Group> _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
+  bool _isSearchingData = false;
   String? _currentUserEmail;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchTimer;
 
   @override
   void initState() {
@@ -29,6 +35,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchTimer?.cancel();
     super.dispose();
   }
 
@@ -58,69 +65,41 @@ class _GroupsScreenState extends State<GroupsScreen> {
     }
   }
 
-  Future<void> _performSearch(String query) async {
+  void _performSearch(String query) {
+    _searchTimer?.cancel();
+
     if (query.isEmpty) {
-      setState(() => _searchResults = []);
+      setState(() {
+        _searchResults = [];
+        _isSearchingData = false;
+      });
       return;
     }
-    if (_currentUserEmail != null) {
-      final results = await DatabaseService.searchGroups(
-        query,
-        _currentUserEmail!,
-      );
-      setState(() => _searchResults = results);
-    }
+
+    setState(() => _isSearchingData = true);
+
+    _searchTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (_currentUserEmail != null) {
+        final results = await DatabaseService.searchGroups(
+          query,
+          _currentUserEmail!,
+        );
+        setState(() {
+          _searchResults = results;
+          _isSearchingData = false;
+        });
+      }
+    });
   }
 
   void _showCreateGroupDialog() {
-    final formKey = GlobalKey<FormState>();
-    String name = '';
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Group'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Group Name'),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter a name'
-                    : null,
-                onSaved: (value) => name = value!,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                formKey.currentState!.save();
-                Navigator.pop(context);
-
-                if (_currentUserEmail != null) {
-                  await DatabaseService.createGroup(name, _currentUserEmail!);
-                  _loadGroups();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$name group created')),
-                    );
-                  }
-                }
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddGroupBottomSheet(onGroupAdded: _loadGroups),
     );
   }
 
@@ -128,38 +107,107 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Widget build(BuildContext context) {
     final themeColor = Theme.of(context).primaryColor;
 
-    return Column(
-      children: [
-        // Custom Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-          child: _isSearching
-              ? _buildSearchHeader(themeColor)
-              : _buildDefaultHeader(themeColor),
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFFECECEC),
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFECECEC),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Custom Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                child: _isSearching
+                    ? _buildSearchField(themeColor)
+                    : _buildDefaultHeader(themeColor),
+              ),
 
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : (_isSearching ? _searchResults : _groups).isEmpty
-              ? _buildEmptyState(themeColor)
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 10,
-                  ),
-                  itemCount: _isSearching
-                      ? _searchResults.length
-                      : _groups.length,
-                  itemBuilder: (context, index) {
-                    final group = _isSearching
-                        ? _searchResults[index]
-                        : _groups[index];
-                    return _buildGroupTile(group, themeColor);
-                  },
-                ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _isSearchingData
+                    ? _buildSkeletonList()
+                    : (_isSearching ? _searchResults : _groups).isEmpty
+                    ? _buildEmptyState(themeColor)
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
+                        ),
+                        itemCount: _isSearching
+                            ? _searchResults.length
+                            : _groups.length,
+                        itemBuilder: (context, index) {
+                          final group = _isSearching
+                              ? _searchResults[index]
+                              : _groups[index];
+                          return _buildGroupTile(group, themeColor);
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonList() {
+    return ShimmerLoading(
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        itemCount: 5,
+        itemBuilder: (context, index) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -181,8 +229,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
             IconButton(
               onPressed: _showCreateGroupDialog,
               icon: HugeIcon(
-                icon: HugeIconsStrokeRounded
-                    .addSquare, // Changed to userGroup for groups
+                icon: HugeIconsStrokeRounded.addSquare,
                 color: Colors.grey[800]!,
                 size: 24,
               ),
@@ -193,87 +240,69 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
   }
 
-  Widget _buildSearchHeader(Color themeColor) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            autofocus: true,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
+  Widget _buildSearchField(Color themeColor) {
+    return TextField(
+      controller: _searchController,
+      autofocus: true,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: Colors.black87,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Search groups...',
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        prefixIcon: SizedBox(
+          width: 35,
+          height: 35,
+          child: Center(
+            child: HugeIcon(
+              icon: HugeIconsStrokeRounded.search01,
+              size: 24.0,
+              strokeWidth: 2,
+              color: themeColor,
             ),
-            decoration: InputDecoration(
-              hintText: 'Search groups...',
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
-              prefixIcon: SizedBox(
-                width: 35,
-                height: 35,
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIconsStrokeRounded.search01,
-                    size: 24.0,
-                    strokeWidth: 2,
-                    color: themeColor,
-                  ),
-                ),
-              ),
-              suffixIcon: GestureDetector(
-                onTap: () {
-                  if (_searchController.text.isNotEmpty) {
-                    _searchController.clear();
-                    _performSearch('');
-                  } else {
-                    setState(() {
-                      _isSearching = false;
-                      _searchController.clear();
-                      _searchResults = [];
-                    });
-                  }
-                },
-                child: SizedBox(
-                  width: 35,
-                  height: 35,
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIconsStrokeRounded.cancel01,
-                      size: 24.0,
-                      strokeWidth: 2,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 4,
-                horizontal: 8,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(color: themeColor, width: 2),
-              ),
-            ),
-            onChanged: _performSearch,
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _showCreateGroupDialog,
-          icon: HugeIcon(
-            icon: HugeIconsStrokeRounded.addSquare,
-            color: Colors.grey[800]!,
-            size: 24,
+        suffixIcon: GestureDetector(
+          onTap: () {
+            if (_searchController.text.isNotEmpty) {
+              _searchController.clear();
+              _performSearch('');
+            } else {
+              setState(() {
+                _isSearching = false;
+                _searchController.clear();
+                _searchResults = [];
+              });
+            }
+          },
+          child: SizedBox(
+            width: 35,
+            height: 35,
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIconsStrokeRounded.cancel01,
+                size: 24.0,
+                strokeWidth: 2,
+                color: Colors.grey[600],
+              ),
+            ),
           ),
         ),
-      ],
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(25),
+          borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(25),
+          borderSide: BorderSide(color: themeColor, width: 2),
+        ),
+      ),
+      onChanged: _performSearch,
     );
   }
 
@@ -287,17 +316,16 @@ class _GroupsScreenState extends State<GroupsScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: themeColor.withOpacity(0.1),
-          child: Text(
-            initial,
-            style: TextStyle(
-              color: themeColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+          child: HugeIcon(
+            icon: HugeIconsStrokeRounded.bitcoinBag,
+            color: themeColor,
+            size: 20,
+            strokeWidth: 2,
           ),
         ),
         title: Text(

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import '../services/auth_service.dart';
 import '../services/session_service.dart';
-import '../utils/page_transitions.dart';
+import '../utils/nav_controller.dart';
+import 'dashboard_screen.dart';
 import 'friends_screen.dart';
 import 'groups_screen.dart';
 import 'account_screen.dart';
-import 'welcome_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,55 +16,73 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // "Home" is index 1
-
   @override
   Widget build(BuildContext context) {
-    final themeColor = Theme.of(context).primaryColor;
-
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(child: _buildSelectedScreen(themeColor)),
-            // Custom Floating Navigation Bar
-            Container(
-              margin: const EdgeInsets.fromLTRB(15, 0, 15, 15),
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.all(Radius.circular(10)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 0),
-                  ),
-                ],
-              ),
-              child: Row(
+      extendBody: true,
+      body: ValueListenableBuilder<int>(
+        valueListenable: NavController.selectedIndex,
+        builder: (context, index, _) {
+          return _buildSelectedScreen(index);
+        },
+      ),
+      bottomNavigationBar: SafeArea(
+        bottom: true,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+          height: 75,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ValueListenableBuilder<int>(
+            valueListenable: NavController.selectedIndex,
+            builder: (context, selectedIndex, _) {
+              return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(0, HugeIconsStrokeRounded.home09, 'Home'),
-                  _buildNavItem(1, HugeIconsStrokeRounded.userGroup, 'Groups'),
-                  _buildNavItem(2, HugeIconsStrokeRounded.user, 'Friends'),
-                  _buildProfileNavItem(3),
+                  _buildNavItem(
+                    0,
+                    HugeIconsStrokeRounded.home09,
+                    'Home',
+                    selectedIndex,
+                  ),
+                  _buildNavItem(
+                    1,
+                    HugeIconsStrokeRounded.userGroup,
+                    'Groups',
+                    selectedIndex,
+                  ),
+                  _buildNavItem(
+                    2,
+                    HugeIconsStrokeRounded.user,
+                    'Friends',
+                    selectedIndex,
+                  ),
+                  _buildProfileNavItem(3, selectedIndex),
                 ],
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, dynamic icon, String label) {
-    final isActive = _selectedIndex == index;
+  Widget _buildNavItem(
+    int index,
+    dynamic icon,
+    String label,
+    int selectedIndex,
+  ) {
+    final isActive = selectedIndex == index;
     final themeColor = Theme.of(context).primaryColor;
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedIndex = index),
+        onTap: () {
+          NavController.setIndex(index);
+        },
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -76,9 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isActive
-                    ? themeColor.withOpacity(1.0)
-                    : Colors.transparent,
+                color: isActive ? themeColor : Colors.transparent,
               ),
               child: AnimatedScale(
                 scale: isActive ? 1.1 : 1.0,
@@ -107,13 +122,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileNavItem(int index) {
-    final isActive = _selectedIndex == index;
+  Widget _buildProfileNavItem(int index, int selectedIndex) {
+    final isActive = selectedIndex == index;
     final themeColor = Theme.of(context).primaryColor;
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedIndex = index),
+        onTap: () {
+          NavController.setIndex(index);
+        },
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -122,13 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                // border: Border.all(
-                //   color: isActive ? themeColor : Colors.transparent,
-                //   width: 2,
-                // ),
-              ),
+              decoration: const BoxDecoration(shape: BoxShape.circle),
               child: FutureBuilder<String?>(
                 future: SessionService.getUserName(),
                 builder: (context, snapshot) {
@@ -167,127 +178,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHomeContent(Color themeColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Greeting
-          FutureBuilder<String?>(
-            future: SessionService.getUserName(),
-            builder: (context, snapshot) {
-              final name = snapshot.data ?? 'User';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hey,',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[500],
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.grey[900],
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 40),
-
-          // Placeholder content
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long_rounded,
-                    size: 80,
-                    color: themeColor.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'No expenses yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Start splitting bills with your friends!',
-                    style: TextStyle(fontSize: 15, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Clear session button
-          Center(
-            child: TextButton.icon(
-              onPressed: () async {
-                await AuthService.signOut();
-                if (mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    AnimatedPageRoute(page: const WelcomeScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-              icon: Icon(
-                Icons.logout_rounded,
-                color: Colors.red[400],
-                size: 20,
-              ),
-              label: Text(
-                'Clear Session',
-                style: TextStyle(
-                  color: Colors.red[400],
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelectedScreen(Color themeColor) {
-    switch (_selectedIndex) {
+  Widget _buildSelectedScreen(int index) {
+    switch (index) {
       case 0:
-        return _buildHomeContent(themeColor);
+        return const DashboardScreen();
       case 1:
         return const GroupsScreen();
       case 2:
         return const FriendsScreen();
       case 3:
-        return AccountScreen(
-          onBack: () {
-            setState(() {
-              _selectedIndex = 0;
-            });
-          },
-        );
+        return const AccountScreen();
       default:
-        return _buildHomeContent(themeColor);
+        return const DashboardScreen();
     }
   }
 }

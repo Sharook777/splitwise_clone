@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
 import '../services/session_service.dart';
+import '../widgets/add_friend_bottom_sheet.dart';
+import '../widgets/shimmer_loading.dart';
+import 'friend_detail_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -17,8 +22,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
   List<User> _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
+  bool _isSearchingData = false;
   String? _currentUserEmail;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchTimer;
 
   @override
   void initState() {
@@ -29,6 +36,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchTimer?.cancel();
     super.dispose();
   }
 
@@ -46,92 +54,41 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
   }
 
-  Future<void> _performSearch(String query) async {
+  void _performSearch(String query) {
+    _searchTimer?.cancel();
+
     if (query.isEmpty) {
-      setState(() => _searchResults = []);
+      setState(() {
+        _searchResults = [];
+        _isSearchingData = false;
+      });
       return;
     }
-    if (_currentUserEmail != null) {
-      final results = await DatabaseService.searchUsers(
-        query,
-        _currentUserEmail!,
-      );
-      setState(() => _searchResults = results);
-    }
+
+    setState(() => _isSearchingData = true);
+
+    _searchTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (_currentUserEmail != null) {
+        final results = await DatabaseService.searchUsers(
+          query,
+          _currentUserEmail!,
+        );
+        setState(() {
+          _searchResults = results;
+          _isSearchingData = false;
+        });
+      }
+    });
   }
 
-  void _showAddFriendDialog() {
-    final formKey = GlobalKey<FormState>();
-    String name = '';
-    String email = '';
-
-    showDialog(
+  void _showAddFriendBottomSheet() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Friend'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter a name'
-                    : null,
-                onSaved: (value) => name = value!,
-              ),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Please enter an email';
-                  if (!RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  ).hasMatch(value))
-                    return 'Please enter a valid email';
-                  return null;
-                },
-                onSaved: (value) => email = value!,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                formKey.currentState!.save();
-                Navigator.pop(context);
-
-                if (_currentUserEmail != null) {
-                  // Check if user exists, else create
-                  final existingUser = await DatabaseService.getUserByEmail(
-                    email,
-                  );
-                  if (existingUser == null) {
-                    await DatabaseService.insertUser(
-                      User(name: name, email: email),
-                    );
-                  }
-                  await DatabaseService.addFriend(_currentUserEmail!, email);
-                  _loadFriends();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$name added as friend')),
-                    );
-                  }
-                }
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddFriendBottomSheet(onFriendAdded: _loadFriends),
     );
   }
 
@@ -139,42 +96,111 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget build(BuildContext context) {
     final themeColor = Theme.of(context).primaryColor;
 
-    return Column(
-      children: [
-        // Custom Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-          child: _isSearching
-              ? _buildSearchHeader(themeColor)
-              : _buildDefaultHeader(themeColor),
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFFECECEC),
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Color(0xFFECECEC),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Custom Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                child: _isSearching
+                    ? _buildSearchHeader(themeColor)
+                    : _buildDefaultHeader(themeColor),
+              ),
 
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : (_isSearching ? _searchResults : _friends).isEmpty
-              ? _buildEmptyState(themeColor)
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 10,
-                  ),
-                  itemCount: _isSearching
-                      ? _searchResults.length
-                      : _friends.length,
-                  itemBuilder: (context, index) {
-                    final user = _isSearching
-                        ? _searchResults[index]
-                        : _friends[index];
-                    return _buildUserTile(
-                      user,
-                      themeColor,
-                      isSearchResult: _isSearching,
-                    );
-                  },
-                ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _isSearchingData
+                    ? _buildSkeletonList()
+                    : (_isSearching ? _searchResults : _friends).isEmpty
+                    ? _buildEmptyState(themeColor)
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
+                        ),
+                        itemCount: _isSearching
+                            ? _searchResults.length
+                            : _friends.length,
+                        itemBuilder: (context, index) {
+                          final user = _isSearching
+                              ? _searchResults[index]
+                              : _friends[index];
+                          return _buildUserTile(
+                            user,
+                            themeColor,
+                            isSearchResult: _isSearching,
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonList() {
+    return ShimmerLoading(
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        itemCount: 5,
+        itemBuilder: (context, index) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -194,9 +220,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ),
             ),
             IconButton(
-              onPressed: _showAddFriendDialog,
+              onPressed: _showAddFriendBottomSheet,
               icon: HugeIcon(
-                icon: HugeIconsStrokeRounded.userAdd01,
+                icon: HugeIconsStrokeRounded.addSquare,
                 color: Colors.grey[800]!,
                 size: 24,
               ),
@@ -278,15 +304,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
             onChanged: _performSearch,
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _showAddFriendDialog,
-          icon: HugeIcon(
-            icon: HugeIconsStrokeRounded.userAdd01,
-            color: Colors.grey[800]!,
-            size: 24,
-          ),
-        ),
       ],
     );
   }
@@ -309,16 +326,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: themeColor.withOpacity(0.1),
-          child: Text(
-            initial,
-            style: TextStyle(
-              color: themeColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        leading: Hero(
+          tag: 'friend-avatar-${user.email}',
+          child: CircleAvatar(
+            radius: 24,
+            backgroundColor: themeColor.withOpacity(0.1),
+            child: Text(
+              initial,
+              style: TextStyle(
+                color: themeColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
           ),
         ),
@@ -354,7 +374,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 color: Colors.grey[400],
               ),
         onTap: () {
-          // Future: Navigate to friend details or balance
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FriendDetailScreen(friend: user),
+            ),
+          );
         },
       ),
     );
