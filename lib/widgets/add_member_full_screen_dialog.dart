@@ -25,8 +25,7 @@ class AddMemberFullScreenDialog extends StatefulWidget {
       _AddMemberFullScreenDialogState();
 }
 
-class _AddMemberFullScreenDialogState
-    extends State<AddMemberFullScreenDialog> {
+class _AddMemberFullScreenDialogState extends State<AddMemberFullScreenDialog> {
   final TextEditingController _searchController = TextEditingController();
   List<User> _allFriends = [];
   List<User> _displayedFriends = [];
@@ -135,14 +134,15 @@ class _AddMemberFullScreenDialogState
                   fillColor: const Color(0xFFF5F5F5),
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide(color: widget.themeColor, width: 2),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide(color: Colors.transparent, width: 1),
                   ),
                 ),
@@ -164,10 +164,7 @@ class _AddMemberFullScreenDialogState
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: _displayedFriends.length,
                       itemBuilder: (context, index) {
                         final friend = _displayedFriends[index];
@@ -193,7 +190,9 @@ class _AddMemberFullScreenDialogState
                               vertical: 14,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isSelected
+                                  ? widget.themeColor.withOpacity(0.1)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isSelected
@@ -203,22 +202,37 @@ class _AddMemberFullScreenDialogState
                               ),
                             ),
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  friend.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      friend.name,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? widget.themeColor
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      friend.email,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const Spacer(),
-                                Text(
-                                  friend.email,
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 14,
+                                if (isSelected)
+                                  HugeIcon(
+                                    icon: HugeIconsStrokeRounded
+                                        .checkmarkCircle02,
+                                    color: widget.themeColor,
+                                    size: 22,
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -263,8 +277,8 @@ class _AddMemberFullScreenDialogState
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Add',
+                      child: Text(
+                        'Add(${_selectedEmails.length})',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),

@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
-import '../services/session_service.dart';
 import '../widgets/add_member_full_screen_dialog.dart';
 import 'add_expense_screen.dart';
 
@@ -262,7 +261,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     return Stack(
       children: [
         ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           children: [_buildEmptyActivity(themeColor)],
         ),
         Positioned(
@@ -274,7 +273,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddExpenseScreen(),
+                  builder: (context) =>
+                      AddExpenseScreen(group: widget.group, members: _members),
                 ),
               );
             },
@@ -284,7 +284,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               borderRadius: BorderRadius.circular(16),
             ),
             child: const HugeIcon(
-              icon: HugeIconsStrokeRounded.plusSign,
+              icon: HugeIconsStrokeRounded.addInvoice,
               color: Colors.white,
               size: 28,
               strokeWidth: 2,
@@ -700,201 +700,239 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     showDialog(
       context: context,
+      useSafeArea: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
-            return Dialog(
-              insetPadding: const EdgeInsets.symmetric(horizontal: 5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
+            return Dialog.fullscreen(
+              backgroundColor: const Color(0xFFECECEC),
+              child: SafeArea(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Set Currency',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Set Currency',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const HugeIcon(
+                              icon: HugeIconsStrokeRounded.cancel01,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      'Choose the currency for this group',
-                      style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Choose the currency for this group',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Search Field
-                    TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search currency...',
-                        hintStyle: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        controller: searchController,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
                         ),
-                        prefixIcon: SizedBox(
-                          width: 35,
-                          height: 35,
-                          child: Center(
-                            child: HugeIcon(
-                              icon: HugeIconsStrokeRounded.search01,
-                              color: Colors.grey[500]!,
-                              size: 20,
+                        decoration: InputDecoration(
+                          hintText: 'Search currency...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                          prefixIcon: SizedBox(
+                            width: 35,
+                            height: 35,
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIconsStrokeRounded.search01,
+                                color: Colors.grey[500]!,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(35),
+                            borderSide: BorderSide(
+                              color: Colors.grey[200]!,
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(35),
+                            borderSide: BorderSide(color: themeColor, width: 2),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(35),
+                            borderSide: const BorderSide(
+                              color: Colors.transparent,
+                              width: 1,
                             ),
                           ),
                         ),
-                        filled: true,
-                        fillColor: const Color(0xFFF5F5F5),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: Colors.grey[200]!,
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: themeColor, width: 2),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: Colors.transparent,
-                            width: 1,
-                          ),
-                        ),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            final query = val.toLowerCase();
+                            displayedCurrencies = allCurrencies.where((c) {
+                              return c['code']!.toLowerCase().contains(query) ||
+                                  c['name']!.toLowerCase().contains(query);
+                            }).toList();
+                          });
+                        },
                       ),
-                      onChanged: (val) {
-                        setDialogState(() {
-                          final query = val.toLowerCase();
-                          displayedCurrencies = allCurrencies.where((c) {
-                            return c['code']!.toLowerCase().contains(query) ||
-                                c['name']!.toLowerCase().contains(query);
-                          }).toList();
-                        });
-                      },
                     ),
                     const SizedBox(height: 16),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: displayedCurrencies.map((c) {
-                            final isSelected = selected == c['code'];
-                            return GestureDetector(
-                              onTap: () =>
-                                  setDialogState(() => selected = c['code']),
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        children: displayedCurrencies.map((c) {
+                          final isSelected = selected == c['code'];
+                          return GestureDetector(
+                            onTap: () =>
+                                setDialogState(() => selected = c['code']),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? themeColor.withOpacity(0.1)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
                                   color: isSelected
-                                      ? themeColor.withOpacity(0.1)
-                                      : const Color(0xFFF5F5F5),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: themeColor,
-                                          width: 1.5,
-                                        )
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          c['code']!,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            color: isSelected
-                                                ? themeColor
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                        Text(
-                                          c['name']!,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (isSelected)
-                                      HugeIcon(
-                                        icon: HugeIconsStrokeRounded
-                                            .checkmarkCircle02,
-                                        color: themeColor,
-                                        size: 22,
-                                      ),
-                                  ],
+                                      ? themeColor
+                                      : Colors.grey[100]!,
+                                  width: isSelected ? 1.5 : 1,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        c['code']!,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                          color: isSelected
+                                              ? themeColor
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        c['name']!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (isSelected)
+                                    HugeIcon(
+                                      icon: HugeIconsStrokeRounded
+                                          .checkmarkCircle02,
+                                      color: themeColor,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.grey[300]!),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
+                    // Bottom Actions
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(color: Colors.grey[600]),
                               ),
                             ),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              if (selected != null && widget.group.id != null) {
-                                await DatabaseService.updateGroupCurrency(
-                                  widget.group.id!,
-                                  selected!,
-                                );
-                                setState(() => _currency = selected);
-                              }
-                              if (ctx.mounted) Navigator.pop(ctx);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: themeColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (selected != null &&
+                                    widget.group.id != null) {
+                                  await DatabaseService.updateGroupCurrency(
+                                    widget.group.id!,
+                                    selected!,
+                                  );
+                                  setState(() => _currency = selected);
+                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: themeColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Save',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              child: const Text(
+                                'Save',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1172,11 +1210,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       filled: true,
                       fillColor: const Color(0xFFF5F5F5),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide: BorderSide(color: themeColor, width: 2),
                       ),
                     ),
@@ -1197,7 +1235,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(ctx),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                             side: BorderSide(color: Colors.grey[300]!),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
