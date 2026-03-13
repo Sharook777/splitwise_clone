@@ -258,40 +258,53 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   // ── Tab Views ──────────────────────────────────────────
 
   Widget _buildExpensesTab(Color themeColor) {
-    return Stack(
-      children: [
-        ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          children: [_buildEmptyActivity(themeColor)],
-        ),
-        Positioned(
-          bottom: 100, // Reduced overlap with bottom nav
-          right: 20,
-          child: FloatingActionButton(
-            heroTag: 'add-expense-fab',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      AddExpenseScreen(group: widget.group, members: _members),
+    return SafeArea(
+      top: false,
+      child: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
+            children: [_buildEmptyActivity(themeColor)],
+          ),
+          Positioned(
+            bottom: 10,
+            left: 40,
+            right: 40,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddExpenseScreen(
+                      group: widget.group,
+                      members: _members,
+                    ),
+                  ),
+                );
+              },
+              icon: const HugeIcon(
+                icon: HugeIconsStrokeRounded.addInvoice,
+                color: Colors.white,
+                size: 20,
+                strokeWidth: 2,
+              ),
+              label: const Text(
+                'Add Expense',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              );
-            },
-            backgroundColor: themeColor,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const HugeIcon(
-              icon: HugeIconsStrokeRounded.addInvoice,
-              color: Colors.white,
-              size: 28,
-              strokeWidth: 2,
+                elevation: 0,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1425,49 +1438,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   // ── Reusable Widgets ──────────────────────────────────
 
-  Widget _buildSummaryCard(Color themeColor) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Group Balance',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${_currency != null ? _currency!.split(' ').first : '₹'} 0.00',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          HugeIcon(
-            icon: HugeIconsStrokeRounded.wallet01,
-            color: themeColor,
-            size: 30,
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMembersSection(Color themeColor) {
     if (_isLoadingMembers) {
