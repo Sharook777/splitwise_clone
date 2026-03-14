@@ -32,11 +32,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   // email -> value (depending on _splitType)
   Map<String, double> _splitValues = {};
   List<User> _selectedSplitMembers = [];
+  List<User> _sortedMembers = [];
 
   @override
   void initState() {
     super.initState();
-    _selectedSplitMembers = []; // Empty by default
+    _selectedSplitMembers = [];
+    _sortedMembers = List.from(widget.members);
     _loadCurrentUser();
 
     _amountController.addListener(_onAmountChanged);
@@ -70,9 +72,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (_currentUserEmail != null) {
       setState(() {
         _paidBy = widget.members.firstWhere(
-          (m) => m.email.toLowerCase() == _currentUserEmail!.toLowerCase(),
+          (m) => m.email.toLowerCase() == _currentUserEmail?.toLowerCase(),
           orElse: () => widget.members.first,
         );
+
+        // Reorder members to put "Me" first
+        _sortedMembers.sort((a, b) {
+          bool isAMe =
+              a.email.toLowerCase() == _currentUserEmail?.toLowerCase();
+          bool isBMe =
+              b.email.toLowerCase() == _currentUserEmail?.toLowerCase();
+          if (isAMe) return -1;
+          if (isBMe) return 1;
+          return 0;
+        });
       });
     }
   }
@@ -112,7 +125,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
       if ((sum - totalAmount).abs() > 0.01) {
         String symbol = '\$';
-        if (widget.group.currency != null && widget.group.currency!.isNotEmpty) {
+        if (widget.group.currency != null &&
+            widget.group.currency!.isNotEmpty) {
           symbol = widget.group.currency!.split(' ').first;
         }
         _showErrorSnackBar(
@@ -168,12 +182,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFECECEC),
-        body: Column(
-          children: [
-            // Fixed Top Section (Header + Amount/Description)
-            SafeArea(
-              bottom: false,
-              child: Column(
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Fixed Top Section (Header + Amount/Description)
+              Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -203,407 +216,470 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       ],
                     ),
                   ),
+
                   // Amount & Description Box (Fixed)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 15),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(left: 65),
-                          child: Text(
-                            'Amount',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        TextField(
-                          controller: _amountController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d{0,6}(\.?\d{0,2})'),
-                            ),
-                          ],
-                          style: const TextStyle(
-                            fontSize: 38,
-                            fontWeight: FontWeight.bold,
-                            height: 1.1,
-                            letterSpacing: -1,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '0.00',
-                            hintStyle: TextStyle(
-                              color: Colors.grey[200],
-                              fontSize: 38,
-                              height: 1.1,
-                            ),
-                            filled: true,
-                            fillColor: themeColor.withOpacity(0.01),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 4,
-                              horizontal: 8,
-                            ),
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(left: 0, right: 12),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    (widget.group.currency != null && widget.group.currency!.isNotEmpty)
-                                        ? widget.group.currency!.split(' ').first
-                                        : '\$',
-                                    style: TextStyle(
-                                      color: themeColor,
-                                      fontSize: 24,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          margin: const EdgeInsets.only(left: 65),
-                          child: Text(
-                            'Description',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: themeColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: HugeIcon(
-                                icon: HugeIconsStrokeRounded.note01,
-                                color: themeColor,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextField(
-                                controller: _descriptionController,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter a description',
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 15),
-
-            // Scrollable Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Date Action
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      child: Row(
-                        children: [
-                          _buildActionButton(
-                            themeColor: themeColor,
-                            icon: HugeIconsStrokeRounded.calendar03,
-                            label: DateFormat('dd MMM, yyyy').format(_selectedDate),
-                            onTap: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: _selectedDate,
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                                builder: (context, child) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      colorScheme: ColorScheme.light(
-                                        primary: themeColor,
-                                      ),
-                                    ),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (date != null) {
-                                setState(() => _selectedDate = date);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // Paid By & Split Section
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 15),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: _buildSelectionTile(
-                        title: 'Paid by',
-                        value: _paidBy?.email.toLowerCase() == _currentUserEmail?.toLowerCase()
-                            ? 'Me'
-                            : (_paidBy?.name ?? 'Select'),
-                        icon: HugeIconsStrokeRounded.userCircle,
-                        onTap: _showPaidByDialog,
-                        themeColor: themeColor,
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 15),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: _buildSelectionTile(
-                        title: 'Split',
-                        value: _splitType,
-                        icon: HugeIconsStrokeRounded.divideSign,
-                        onTap: _showSplitTypeDialog,
-                        themeColor: themeColor,
-                        isSecondary: true,
-                      ),
-                    ),
-
-                    // Split List
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 15,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'SPLIT WITH',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          ...widget.members.map((member) {
-                            bool isMe = member.email.toLowerCase() == _currentUserEmail?.toLowerCase();
-                            bool isSelected = _selectedSplitMembers.any(
-                              (m) => m.email == member.email,
-                            );
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 15),
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? themeColor.withOpacity(0.05)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isSelected ? themeColor : Colors.transparent,
-                                  width: 1.5,
+              // Scrollable Content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(left: 65),
+                              child: Text(
+                                'Amount',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              child: Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedSplitMembers.removeWhere(
-                                            (m) => m.email == member.email,
-                                          );
-                                        } else {
-                                          _selectedSplitMembers.add(member);
-                                        }
-                                      });
-                                    },
-                                    child: HugeIcon(
-                                      icon: isSelected
-                                          ? HugeIconsStrokeRounded.checkmarkCircle02
-                                          : HugeIconsStrokeRounded.circle,
-                                      color: isSelected
-                                          ? themeColor
-                                          : Colors.grey[300]!,
-                                      size: 24,
-                                    ),
+                            ),
+                            TextField(
+                              controller: _amountController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isMe ? 'Me' : member.name,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: isSelected
-                                                ? themeColor
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                        Text(
-                                          member.email,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.normal,
-                                            fontSize: 12,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d{0,6}(\.?\d{0,2})'),
+                                ),
+                              ],
+                              style: const TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
+                                letterSpacing: -1,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '0.00',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[200],
+                                  fontSize: 38,
+                                  height: 1.1,
+                                ),
+                                filled: true,
+                                fillColor: themeColor.withOpacity(0.01),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 8,
+                                ),
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 0,
+                                    right: 12,
                                   ),
-                                  if (isSelected && _splitType == 'Equally')
-                                    Text(
-                                      '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_calculateEqualSplit(member.email)}',
-                                      style: TextStyle(
-                                        color: themeColor.withOpacity(0.7),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
+                                  child: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: themeColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        (widget.group.currency != null &&
+                                                widget
+                                                    .group
+                                                    .currency!
+                                                    .isNotEmpty)
+                                            ? widget.group.currency!
+                                                  .split(' ')
+                                                  .first
+                                            : '\$',
+                                        style: TextStyle(
+                                          color: themeColor,
+                                          fontSize: 24,
+                                          height: 1,
+                                        ),
                                       ),
                                     ),
-                                  if (_splitType != 'Equally' && isSelected)
-                                    Container(
-                                      width: 100,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF5F5F5),
-                                        borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Container(
+                              margin: const EdgeInsets.only(left: 65),
+                              child: Text(
+                                'Description',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: HugeIcon(
+                                    icon: HugeIconsStrokeRounded.note01,
+                                    color: themeColor,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _descriptionController,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter a description',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.normal,
                                       ),
-                                      child: TextField(
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                              decimal: true,
+                                      border: InputBorder.none,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      // Date Action
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Row(
+                          children: [
+                            _buildActionButton(
+                              themeColor: themeColor,
+                              icon: HugeIconsStrokeRounded.calendar03,
+                              label: DateFormat(
+                                'dd MMM, yyyy',
+                              ).format(_selectedDate),
+                              onTap: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: _selectedDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.light(
+                                          primary: themeColor,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (date != null) {
+                                  setState(() => _selectedDate = date);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      // Paid By & Split Section
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: _buildSelectionTile(
+                          title: 'Paid by',
+                          value:
+                              _paidBy?.email.toLowerCase() ==
+                                  _currentUserEmail?.toLowerCase()
+                              ? 'Me'
+                              : (_paidBy?.name ?? 'Select'),
+                          icon: HugeIconsStrokeRounded.userCircle,
+                          onTap: _showPaidByDialog,
+                          themeColor: themeColor,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: _buildSelectionTile(
+                          title: 'Split',
+                          value: _splitType,
+                          icon: HugeIconsStrokeRounded.divideSign,
+                          onTap: _showSplitTypeDialog,
+                          themeColor: themeColor,
+                          isSecondary: true,
+                        ),
+                      ),
+
+                      // Split List
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 15,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'SPLIT WITH',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            ..._sortedMembers.map((member) {
+                              bool isMe =
+                                  member.email.toLowerCase() ==
+                                  _currentUserEmail?.toLowerCase();
+                              bool isSelected = _selectedSplitMembers.any(
+                                (m) => m.email == member.email,
+                              );
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 15),
+                                padding: const EdgeInsets.all(15),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? themeColor.withOpacity(0.05)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? themeColor
+                                        : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            _selectedSplitMembers.removeWhere(
+                                              (m) => m.email == member.email,
+                                            );
+                                          } else {
+                                            _selectedSplitMembers.add(member);
+                                          }
+                                        });
+                                      },
+                                      child: HugeIcon(
+                                        icon: isSelected
+                                            ? HugeIconsStrokeRounded
+                                                  .checkmarkCircle02
+                                            : HugeIconsStrokeRounded.circle,
+                                        color: isSelected
+                                            ? themeColor
+                                            : Colors.grey[300]!,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isMe ? 'Me' : member.name,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: isSelected
+                                                  ? themeColor
+                                                  : Colors.black87,
                                             ),
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                            RegExp(r'^\d{0,6}(\.?\d{0,2})'),
+                                          ),
+                                          Text(
+                                            member.email,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                              fontSize: 12,
+                                              color: Colors.black87,
+                                            ),
                                           ),
                                         ],
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.normal,
-                                          height: 1,
-                                          color: themeColor,
-                                        ),
-                                        decoration: InputDecoration(
-                                          isDense: true,
-                                          hintText: _splitType == 'Percentage'
-                                              ? '0%'
-                                              : '0',
-                                          suffixText: _splitType == 'Percentage'
-                                              ? '%'
-                                              : null,
-                                          hintStyle: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 14,
-                                            height: 1,
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(
-                                            vertical: 12,
-                                            horizontal: 8,
-                                          ),
-                                          suffixStyle: TextStyle(
-                                            color: themeColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                          border: InputBorder.none,
-                                        ),
-                                        onChanged: (val) {
-                                          double d = double.tryParse(val) ?? 0.0;
-                                          setState(
-                                            () => _splitValues[member.email] = d,
-                                          );
-                                        },
                                       ),
                                     ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          const SizedBox(height: 100),
-                        ],
+                                    if (isSelected && _splitType == 'Equally')
+                                      Text(
+                                        '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_calculateSplitAmount(member.email)}',
+                                        style: TextStyle(
+                                          color: themeColor.withOpacity(0.7),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    if (_splitType != 'Equally' && isSelected)
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            width: 100,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF5F5F5),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: TextField(
+                                              keyboardType:
+                                                  const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(
+                                                  RegExp(
+                                                    r'^\d{0,6}(\.?\d{0,2})',
+                                                  ),
+                                                ),
+                                              ],
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.normal,
+                                                height: 1,
+                                                color: themeColor,
+                                              ),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                hintText:
+                                                    _splitType == 'Percentage'
+                                                    ? '0%'
+                                                    : '0',
+                                                suffixText:
+                                                    _splitType == 'Percentage'
+                                                    ? '%'
+                                                    : null,
+                                                hintStyle: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 14,
+                                                  height: 1,
+                                                ),
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                      horizontal: 8,
+                                                    ),
+                                                suffixStyle: TextStyle(
+                                                  color: themeColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                                border: InputBorder.none,
+                                              ),
+                                              onChanged: (val) {
+                                                double d =
+                                                    double.tryParse(val) ?? 0.0;
+                                                setState(
+                                                  () =>
+                                                      _splitValues[member
+                                                              .email] =
+                                                          d,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_calculateSplitAmount(member.email)}',
+                                            style: TextStyle(
+                                              color: Colors.grey[500],
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 100),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  String _calculateEqualSplit(String email) {
-    if (!_selectedSplitMembers.any((m) => m.email == email)) return '';
+  String _calculateSplitAmount(String email) {
+    if (!_selectedSplitMembers.any((m) => m.email == email)) return '0.00';
     double total = double.tryParse(_amountController.text) ?? 0.0;
     if (total <= 0 || _selectedSplitMembers.isEmpty) return '0.00';
 
-    // Calculate basic per-person amount
-    double perPerson = (total / _selectedSplitMembers.length * 100).floorToDouble() / 100.0;
-    
-    // Calculate total distributed so far
-    double distributed = perPerson * _selectedSplitMembers.length;
-    
-    // Calculate remainder in cents
-    double remainder = (total - distributed);
-    
-    // We'll give the remainder to the FIRST selected member
-    // Check if THIS member is the first one in the selected list
-    if (email == _selectedSplitMembers.first.email) {
-      return (perPerson + remainder).toStringAsFixed(2);
+    if (_splitType == 'Equally') {
+      // Calculate basic per-person amount
+      double perPerson =
+          (total / _selectedSplitMembers.length * 100).floorToDouble() / 100.0;
+
+      // Calculate total distributed so far
+      double distributed = perPerson * _selectedSplitMembers.length;
+
+      // Calculate remainder in cents
+      double remainder = (total - distributed);
+
+      // We'll give the remainder to the person who appears first in the sorted list
+      final firstSelectedMember = _sortedMembers.firstWhere(
+        (m) => _selectedSplitMembers.any((sm) => sm.email == m.email),
+      );
+      if (email == firstSelectedMember.email) {
+        return (perPerson + remainder).toStringAsFixed(2);
+      }
+      return perPerson.toStringAsFixed(2);
+    } else if (_splitType == 'Percentage') {
+      double percentage = _splitValues[email] ?? 0.0;
+      return (total * percentage / 100).toStringAsFixed(2);
+    } else if (_splitType == 'Shares') {
+      double totalShares = _selectedSplitMembers.fold(
+        0,
+        (sum, m) => sum + (_splitValues[m.email] ?? 0),
+      );
+      if (totalShares <= 0) return '0.00';
+      double userShares = _splitValues[email] ?? 0.0;
+      return (total * userShares / totalShares).toStringAsFixed(2);
+    } else if (_splitType == 'Uniquely (Exact)') {
+      return (_splitValues[email] ?? 0.0).toStringAsFixed(2);
     }
-    
-    return perPerson.toStringAsFixed(2);
+
+    return '0.00';
   }
 
   Widget _buildActionButton({
@@ -744,7 +820,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   itemCount: widget.members.length,
                   itemBuilder: (context, index) {
                     final member = widget.members[index];
-                    bool isMe = member.email.toLowerCase() == _currentUserEmail?.toLowerCase();
+                    bool isMe =
+                        member.email.toLowerCase() ==
+                        _currentUserEmail?.toLowerCase();
                     bool isSelected = _paidBy?.email == member.email;
                     return ListTile(
                       leading: CircleAvatar(
