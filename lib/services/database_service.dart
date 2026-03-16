@@ -24,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -73,30 +73,10 @@ class DatabaseService {
         if (oldVersion < 6) {
           await db.execute('ALTER TABLE groups ADD COLUMN budget REAL');
         }
-        if (oldVersion < 7) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS expenses (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              group_id INTEGER NOT NULL,
-              description TEXT NOT NULL,
-              amount REAL NOT NULL,
-              date TEXT NOT NULL,
-              paid_by_email TEXT NOT NULL,
-              split_type TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS expense_splits (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              expense_id INTEGER NOT NULL,
-              user_email TEXT NOT NULL,
-              amount REAL NOT NULL,
-              split_value REAL,
-              FOREIGN KEY (expense_id) REFERENCES expenses (id) ON DELETE CASCADE
-            )
-          ''');
+        if (oldVersion < 8) {
+          await db.execute(
+            'ALTER TABLE expenses ADD COLUMN is_settlement INTEGER DEFAULT 0',
+          );
         }
       },
     );
@@ -153,6 +133,7 @@ class DatabaseService {
         paid_by_email TEXT NOT NULL,
         split_type TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        is_settlement INTEGER DEFAULT 0,
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
       )
     ''');

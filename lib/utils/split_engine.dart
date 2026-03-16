@@ -109,6 +109,6 @@ String sumMapPercentage(Map<String, double> data) {
 }
 
 String formatAmount(double v) {
-  if (v == 0) return '';
+  if (v == 0) return '0';
   return v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
 }

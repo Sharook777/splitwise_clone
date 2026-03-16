@@ -9,7 +9,9 @@ import '../models/user_model.dart';
 import '../services/database_service.dart';
 import '../utils/debt_engine.dart';
 import '../utils/split_engine.dart';
+import '../utils/export_helper.dart';
 import '../widgets/add_member_full_screen_dialog.dart';
+import 'member_detail_screen.dart';
 import 'add_expense_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
@@ -46,7 +48,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     _loadExpenses();
 
     _tabController.addListener(() {
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 
@@ -215,7 +217,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           Text(
                             '${_members.length} Member${_members.length != 1 ? 's' : ''}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
                             ),
                           ),
@@ -451,6 +453,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ListTile(
                 onTap: () async {
                   if (expense.id != null) {
+                    if (expense.isSettlement) {
+                      _showSettlementDetailsDialog(expense, themeColor);
+                      return;
+                    }
+
                     final splits = await DatabaseService.getExpenseSplits(
                       expense.id!,
                     );
@@ -481,12 +488,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: themeColor.withOpacity(0.1),
+                    color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: HugeIcon(
-                      icon: HugeIconsStrokeRounded.invoice01,
+                      icon: expense.isSettlement
+                          ? HugeIconsStrokeRounded.agreement02
+                          : HugeIconsStrokeRounded.invoice01,
                       color: themeColor,
                       size: 24,
                     ),
@@ -542,6 +551,132 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           );
         }),
       ),
+    );
+  }
+
+  void _showSettlementDetailsDialog(Expense expense, Color themeColor) {
+    final symbol = _currency != null && _currency!.isNotEmpty
+        ? _currency!.split(' ').first
+        : '\$';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIconsStrokeRounded.agreement02,
+                      color: themeColor,
+                      size: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Settlement Details',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildDetailRow('Description', expense.description),
+                      const Divider(height: 24),
+                      _buildDetailRow(
+                        'Amount',
+                        '$symbol ${formatAmount(expense.amount)}',
+                        valueColor: themeColor,
+                      ),
+                      const Divider(height: 24),
+                      _buildDetailRow(
+                        'Date',
+                        DateFormat('dd MMM yyyy, hh:mm a').format(expense.date),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: themeColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _deleteExpense(expense, themeColor);
+                  },
+                  child: const Text(
+                    'Delete Settlement',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: valueColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -673,81 +808,100 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   Widget _buildSettingsTab(Color themeColor) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+    return SafeArea(
+      top: false,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 100),
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                _buildSettingsTile(
+                  icon: HugeIconsStrokeRounded.edit02,
+                  title: 'Edit Group Name',
+                  subtitle: _groupName,
+                  color: themeColor,
+                  onTap: () async {
+                    await _showEditGroupNameSheet(themeColor);
+                    _refreshGroup();
+                  },
+                ),
+                _buildSettingsDivider(),
+                _buildSettingsTile(
+                  icon: HugeIconsStrokeRounded.dollarSquare,
+                  title: 'Set Currency',
+                  subtitle: _currency ?? 'Not set',
+                  color: themeColor,
+                  onTap: () async {
+                    await _showSetCurrencyDialog(themeColor);
+                    _refreshGroup();
+                  },
+                ),
+                _buildSettingsDivider(),
+                _buildSettingsTile(
+                  icon: HugeIconsStrokeRounded.invoice03,
+                  title: 'Set Budget',
+                  subtitle: _budget != null
+                      ? '${_currency?.split(' ').first ?? ''} ${_budget!.toStringAsFixed(0)}'
+                            .trim()
+                      : 'Not set',
+                  color: themeColor,
+                  onTap: () async {
+                    await _showSetBudgetDialog(themeColor);
+                    _refreshGroup();
+                  },
+                ),
+                _buildSettingsDivider(),
+                _buildSettingsTile(
+                  icon: HugeIconsStrokeRounded.calendar03,
+                  title: 'Set Dates',
+                  subtitle: _formatDateRange(),
+                  color: themeColor,
+                  onTap: () async {
+                    await _showSetDatesDialog(themeColor);
+                    _refreshGroup();
+                  },
+                ),
+                _buildSettingsDivider(),
+                _buildSettingsTile(
+                  icon: HugeIconsStrokeRounded.aiSheets,
+                  title: 'Export as sheet',
+                  subtitle: 'Download all expenses as CSV',
+                  color: themeColor,
+                  onTap: () async {
+                    await ExportHelper.exportGroupToCsv(
+                      group: _currentGroup,
+                      expenses: _expenses,
+                      allSplits: _allSplits,
+                      members: _members,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              _buildSettingsTile(
-                icon: HugeIconsStrokeRounded.edit02,
-                title: 'Edit Group Name',
-                subtitle: _groupName,
-                color: themeColor,
-                onTap: () async {
-                  await _showEditGroupNameSheet(themeColor);
-                  _refreshGroup();
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsTile(
-                icon: HugeIconsStrokeRounded.dollarSquare,
-                title: 'Set Currency',
-                subtitle: _currency ?? 'Not set',
-                color: themeColor,
-                onTap: () async {
-                  await _showSetCurrencyDialog(themeColor);
-                  _refreshGroup();
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsTile(
-                icon: HugeIconsStrokeRounded.invoice03,
-                title: 'Set Budget',
-                subtitle: _budget != null
-                    ? '${_currency?.split(' ').first ?? ''} ${_budget!.toStringAsFixed(0)}'
-                          .trim()
-                    : 'Not set',
-                color: themeColor,
-                onTap: () async {
-                  await _showSetBudgetDialog(themeColor);
-                  _refreshGroup();
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsTile(
-                icon: HugeIconsStrokeRounded.calendar03,
-                title: 'Set Dates',
-                subtitle: _formatDateRange(),
-                color: themeColor,
-                onTap: () async {
-                  await _showSetDatesDialog(themeColor);
-                  _refreshGroup();
-                },
-              ),
-            ],
+          const SizedBox(height: 20),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: _buildSettingsTile(
+              icon: HugeIconsStrokeRounded.delete02,
+              title: 'Delete Group',
+              color: Colors.redAccent,
+              textColor: Colors.redAccent,
+              onTap: () => _showDeleteGroupDialog(themeColor),
+              noTail: false,
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: _buildSettingsTile(
-            icon: HugeIconsStrokeRounded.delete02,
-            title: 'Delete Group',
-            color: Colors.redAccent,
-            textColor: Colors.redAccent,
-            onTap: () => _showDeleteGroupDialog(themeColor),
-            noTail: false,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1174,7 +1328,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? themeColor.withOpacity(0.1)
+                                    ? themeColor.withValues(alpha: 0.1)
                                     : Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
@@ -1855,9 +2009,27 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     horizontal: 8,
                     vertical: 0,
                   ),
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MemberDetailScreen(
+                          group: _currentGroup,
+                          member: member,
+                          allExpenses: _expenses,
+                          allSplits: _allSplits,
+                          allMembers: _members,
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      _loadExpenses();
+                      _refreshGroup();
+                    }
+                  },
                   leading: CircleAvatar(
                     radius: 20,
-                    backgroundColor: themeColor.withOpacity(0.1),
+                    backgroundColor: themeColor.withValues(alpha: 0.1),
                     child: Text(
                       member.name[0].toUpperCase(),
                       style: TextStyle(

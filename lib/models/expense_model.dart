@@ -8,6 +8,7 @@ class Expense {
   final String splitType;
   final DateTime createdAt;
   final String? paidByName; // Fetched via JOIN
+  final bool isSettlement;
 
   Expense({
     this.id,
@@ -19,6 +20,7 @@ class Expense {
     required this.splitType,
     required this.createdAt,
     this.paidByName,
+    this.isSettlement = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -31,6 +33,7 @@ class Expense {
       'paid_by_email': paidByEmail,
       'split_type': splitType,
       'created_at': createdAt.toIso8601String(),
+      'is_settlement': isSettlement ? 1 : 0,
     };
   }
 
@@ -45,6 +48,7 @@ class Expense {
       splitType: map['split_type'],
       createdAt: DateTime.parse(map['created_at']),
       paidByName: map['paid_by_name'],
+      isSettlement: (map['is_settlement'] ?? 0) == 1,
     );
   }
 }
