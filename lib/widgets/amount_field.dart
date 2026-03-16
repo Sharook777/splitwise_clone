@@ -41,7 +41,7 @@ class _AmountFieldState extends State<AmountField> {
 
   String _format(double v) {
     if (v == 0) return '';
-    return v.toString();
+    return v % 1 == 0 ? v.toInt().toString() : v.toString();
   }
 
   @override
@@ -70,6 +70,7 @@ class _AmountFieldState extends State<AmountField> {
         decoration: InputDecoration(
           isDense: true,
           hintText: '0',
+          hintStyle: TextStyle(color: Colors.grey[400]),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 12,

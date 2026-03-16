@@ -52,6 +52,9 @@ Map<String, double> smartSplit({
   } else if (mode == "equal") {
     final random = seed != null ? Random(seed) : Random();
 
+    if (members.isEmpty) {
+      return {};
+    }
     int base = totalCents ~/ members.length;
     int remainder = totalCents % members.length;
 
@@ -67,4 +70,41 @@ Map<String, double> smartSplit({
   }
 
   return result.map((k, v) => MapEntry(k, v / 100));
+}
+
+String getSplitHeader({required double total, required int memberCount}) {
+  if (memberCount == 0) return "";
+
+  double exact = total / memberCount;
+
+  int totalCents = (total * 100).round();
+  int base = totalCents ~/ memberCount;
+  int remainder = totalCents % memberCount;
+
+  if (remainder == 0) {
+    return "${(base / 100).toStringAsFixed(2)}/Person";
+  }
+
+  return "~${exact.toStringAsFixed(2)}/Person";
+}
+
+String sumMapValues(Map<String, double> data) {
+  double sum = data.values.fold(0.0, (sum, value) => sum + value);
+  String formatted = sum % 1 == 0
+      ? sum.toInt().toString()
+      : sum.toStringAsFixed(2);
+
+  return formatted;
+}
+
+String sumMapAmount(Map<String, double> data) {
+  String values = sumMapValues(data);
+
+  return "Total: $values";
+}
+
+String sumMapPercentage(Map<String, double> data) {
+  String values = sumMapValues(data);
+
+  return "Percentage: $values%";
 }

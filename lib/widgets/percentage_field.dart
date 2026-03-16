@@ -41,7 +41,7 @@ class _PercentageFieldState extends State<PercentageField> {
 
   String _format(double v) {
     if (v == 0) return '';
-    return v.toString();
+    return v % 1 == 0 ? v.toInt().toString() : v.toString();
   }
 
   @override
@@ -69,8 +69,15 @@ class _PercentageFieldState extends State<PercentageField> {
         style: TextStyle(fontSize: 14, height: 1, color: widget.themeColor),
         decoration: InputDecoration(
           isDense: true,
-          hintText: '0%',
+          hintText: '0',
+          hintStyle: TextStyle(color: Colors.grey[400]),
+
           suffixText: '%',
+          suffixStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: widget.themeColor,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 12,

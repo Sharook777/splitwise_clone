@@ -62,7 +62,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (_splitType == 'Equally') {
       setState(() {
         _splitAmounts = smartSplit(
-          total: double.tryParse(_amountController.text) ?? 0.0,
+          total: double.tryParse(_amountController.text) ?? 0,
           members: _selectedSplitMembers
               .map((e) => SplitMember(email: e.email))
               .toList(),
@@ -514,14 +514,59 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'SPLIT WITH',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                color: Colors.grey[500],
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'SPLIT WITH',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                                if (_selectedSplitMembers.isNotEmpty &&
+                                    _splitType == 'Equally')
+                                  Text(
+                                    getSplitHeader(
+                                      total:
+                                          double.tryParse(
+                                            _amountController.text,
+                                          ) ??
+                                          0,
+                                      memberCount: _selectedSplitMembers.length,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                      color: themeColor,
+                                    ),
+                                  ),
+                                if (_selectedSplitMembers.isNotEmpty &&
+                                    _splitType == 'Exact Amount')
+                                  Text(
+                                    sumMapAmount(_splitAmounts),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                      color: themeColor,
+                                    ),
+                                  ),
+                                if (_selectedSplitMembers.isNotEmpty &&
+                                    _splitType == 'Percentage')
+                                  Text(
+                                    sumMapPercentage(_splitValues),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                      color: themeColor,
+                                    ),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 15),
                             ..._sortedMembers.map((member) {
@@ -531,38 +576,38 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               bool isSelected = _selectedSplitMembers.any(
                                 (m) => m.email == member.email,
                               );
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 15),
-                                padding: const EdgeInsets.all(15),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? themeColor.withOpacity(0.05)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedSplitMembers.removeWhere(
+                                        (m) => m.email == member.email,
+                                      );
+                                    } else {
+                                      _selectedSplitMembers.add(member);
+                                    }
+                                    _splitValues[member.email] = 0;
+                                    _onAmountChanged();
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 15),
+                                  padding: const EdgeInsets.all(15),
+                                  decoration: BoxDecoration(
                                     color: isSelected
-                                        ? themeColor
-                                        : Colors.transparent,
-                                    width: 1.5,
+                                        ? themeColor.withOpacity(0.05)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? themeColor
+                                          : Colors.transparent,
+                                      width: 1.5,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          if (isSelected) {
-                                            _selectedSplitMembers.removeWhere(
-                                              (m) => m.email == member.email,
-                                            );
-                                          } else {
-                                            _selectedSplitMembers.add(member);
-                                            _splitValues[member.email] = 0;
-                                          }
-                                          _onAmountChanged();
-                                        });
-                                      },
-                                      child: HugeIcon(
+                                  child: Row(
+                                    children: [
+                                      HugeIcon(
                                         icon: isSelected
                                             ? HugeIconsStrokeRounded
                                                   .checkmarkCircle02
@@ -572,98 +617,103 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                             : Colors.grey[300]!,
                                         size: 24,
                                       ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            isMe ? 'Me' : member.name,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                              color: isSelected
-                                                  ? themeColor
-                                                  : Colors.black87,
+
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              isMe ? 'Me' : member.name,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: isSelected
+                                                    ? themeColor
+                                                    : Colors.black87,
+                                              ),
                                             ),
-                                          ),
-                                          Text(
-                                            member.email,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.normal,
-                                              fontSize: 12,
-                                              color: Colors.black87,
+                                            Text(
+                                              member.email,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.normal,
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (isSelected && _splitType == 'Equally')
-                                      Text(
-                                        '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
-                                        style: TextStyle(
-                                          color: themeColor,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
+                                          ],
                                         ),
                                       ),
-                                    if (_splitType != 'Equally' && isSelected)
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              if (_splitType == 'Percentage' ||
-                                                  _splitType == 'Share')
-                                                Text(
-                                                  '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
-                                                  style: TextStyle(
-                                                    color: themeColor,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              const SizedBox(width: 4),
-                                              if (_splitType == 'Exact Amount')
-                                                AmountField(
-                                                  value:
-                                                      _splitAmounts[member
-                                                          .email] ??
-                                                      0,
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      _splitAmounts[member
-                                                              .email] =
-                                                          value;
-                                                    });
-                                                  },
-                                                  themeColor: themeColor,
-                                                ),
-                                              if (_splitType == 'Percentage')
-                                                PercentageField(
-                                                  value:
-                                                      _splitValues[member
-                                                          .email] ??
-                                                      0,
-                                                  themeColor: themeColor,
-                                                  onChanged: (val) {
-                                                    setState(() {
-                                                      _splitValues[member
-                                                              .email] =
-                                                          val;
-                                                    });
-
-                                                    _onAmountChanged();
-                                                  },
-                                                ),
-                                            ],
+                                      if (isSelected && _splitType == 'Equally')
+                                        Text(
+                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
+                                          style: TextStyle(
+                                            color: themeColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ],
-                                      ),
-                                  ],
+                                        ),
+                                      if (_splitType != 'Equally' && isSelected)
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                if (_splitType ==
+                                                        'Percentage' ||
+                                                    _splitType == 'Share')
+                                                  Text(
+                                                    '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
+                                                    style: TextStyle(
+                                                      color: themeColor,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                const SizedBox(width: 4),
+                                                if (_splitType ==
+                                                    'Exact Amount')
+                                                  AmountField(
+                                                    value:
+                                                        _splitValues[member
+                                                            .email] ??
+                                                        0,
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        _splitValues[member
+                                                                .email] =
+                                                            value;
+                                                      });
+                                                      _onAmountChanged();
+                                                    },
+                                                    themeColor: themeColor,
+                                                  ),
+                                                if (_splitType == 'Percentage')
+                                                  PercentageField(
+                                                    value:
+                                                        _splitValues[member
+                                                            .email] ??
+                                                        0,
+                                                    themeColor: themeColor,
+                                                    onChanged: (val) {
+                                                      setState(() {
+                                                        _splitValues[member
+                                                                .email] =
+                                                            val;
+                                                      });
+
+                                                      _onAmountChanged();
+                                                    },
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               );
                             }).toList(),
