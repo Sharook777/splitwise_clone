@@ -66,20 +66,12 @@ class DatabaseService {
           );
         }
         if (oldVersion < 5) {
-          await db.execute(
-            'ALTER TABLE groups ADD COLUMN currency TEXT',
-          );
-          await db.execute(
-            'ALTER TABLE groups ADD COLUMN start_date TEXT',
-          );
-          await db.execute(
-            'ALTER TABLE groups ADD COLUMN end_date TEXT',
-          );
+          await db.execute('ALTER TABLE groups ADD COLUMN currency TEXT');
+          await db.execute('ALTER TABLE groups ADD COLUMN start_date TEXT');
+          await db.execute('ALTER TABLE groups ADD COLUMN end_date TEXT');
         }
         if (oldVersion < 6) {
-          await db.execute(
-            'ALTER TABLE groups ADD COLUMN budget REAL',
-          );
+          await db.execute('ALTER TABLE groups ADD COLUMN budget REAL');
         }
         if (oldVersion < 7) {
           await db.execute('''
@@ -392,6 +384,7 @@ class DatabaseService {
     final db = await database;
     return await db.delete('groups', where: 'id = ?', whereArgs: [groupId]);
   }
+
   /// Get a single group by ID
   static Future<Group?> getGroupById(int groupId) async {
     final db = await database;
@@ -408,17 +401,20 @@ class DatabaseService {
   }
 
   /// Insert an expense and its splits within a transaction
-  static Future<int> insertExpense(Expense expense, List<ExpenseSplit> splits) async {
+  static Future<int> insertExpense(
+    Expense expense,
+    List<ExpenseSplit> splits,
+  ) async {
     final db = await database;
     return await db.transaction((txn) async {
       final expenseId = await txn.insert('expenses', expense.toMap());
-      
+
       for (var split in splits) {
         var splitMap = split.toMap();
         splitMap['expense_id'] = expenseId; // set foreign key
         await txn.insert('expense_splits', splitMap);
       }
-      
+
       return expenseId;
     });
   }
@@ -432,7 +428,7 @@ class DatabaseService {
       FROM expenses e
       INNER JOIN users u ON LOWER(e.paid_by_email) = LOWER(u.email)
       WHERE e.group_id = ?
-      ORDER BY e.date DESC, e.id DESC
+      ORDER BY e.created_at DESC
       ''',
       [groupId],
     );
@@ -457,7 +453,10 @@ class DatabaseService {
   }
 
   /// Update an expense and its splits within a transaction
-  static Future<void> updateExpense(Expense expense, List<ExpenseSplit> splits) async {
+  static Future<void> updateExpense(
+    Expense expense,
+    List<ExpenseSplit> splits,
+  ) async {
     final db = await database;
     await db.transaction((txn) async {
       // Update main expense record
@@ -467,26 +466,28 @@ class DatabaseService {
         where: 'id = ?',
         whereArgs: [expense.id],
       );
-      
+
       // Delete old splits
       await txn.delete(
         'expense_splits',
         where: 'expense_id = ?',
         whereArgs: [expense.id],
       );
-      
+
       // Insert new splits
       for (var split in splits) {
         var splitMap = split.toMap();
         splitMap['id'] = null; // Ensure new ID is generated
-        splitMap['expense_id'] = expense.id; 
+        splitMap['expense_id'] = expense.id;
         await txn.insert('expense_splits', splitMap);
       }
     });
   }
 
   /// Get all splits for all expenses in a group
-  static Future<List<ExpenseSplit>> getAllExpenseSplitsForGroup(int groupId) async {
+  static Future<List<ExpenseSplit>> getAllExpenseSplitsForGroup(
+    int groupId,
+  ) async {
     final db = await database;
     final results = await db.rawQuery(
       '''

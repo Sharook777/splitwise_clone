@@ -44,6 +44,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     _initGroupData();
     _loadMembers();
     _loadExpenses();
+
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   void _initGroupData() {
@@ -1803,7 +1807,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1848,8 +1852,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
+                    horizontal: 8,
+                    vertical: 0,
                   ),
                   leading: CircleAvatar(
                     radius: 20,
@@ -1871,11 +1875,23 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     ),
                   ),
                   subtitle: memberBalance != null && memberBalance.totalPaid > 0
-                      ? Text(
-                          'Spent $symbol ${formatAmount(memberBalance.totalPaid)}',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 13,
+                      ? Text.rich(
+                          TextSpan(
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[500],
+                            ),
+                            children: [
+                              const TextSpan(text: 'Spent '),
+                              TextSpan(
+                                text:
+                                    '$symbol ${formatAmount(memberBalance.totalPaid)}',
+                                style: TextStyle(
+                                  color: themeColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       : Text(
@@ -2132,7 +2148,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         return SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2150,9 +2166,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     HugeIcon(
                       icon: HugeIconsStrokeRounded.aiMagic,
                       color: themeColor,
-                      size: 24,
+                      size: 25,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     const Text(
                       'Simplify Debts',
                       style: TextStyle(
@@ -2175,8 +2191,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       children: [
                         HugeIcon(
                           icon: HugeIconsStrokeRounded.checkmarkCircle02,
-                          color: Colors.green,
-                          size: 48,
+                          color: themeColor,
+                          size: 50,
                         ),
                         const SizedBox(height: 16),
                         const Text(
@@ -2191,10 +2207,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   )
                 else
                   Flexible(
-                    child: ListView.separated(
+                    child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: transactions.length,
-                      separatorBuilder: (ctx, i) => const Divider(height: 1),
                       itemBuilder: (ctx, i) {
                         final tx = transactions[i];
                         final from = _members
@@ -2229,40 +2244,46 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           child: Row(
                             children: [
                               Expanded(
-                                flex: 2,
+                                flex: 3,
                                 child: Text(
                                   from,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                child: HugeIcon(
-                                  icon: HugeIconsStrokeRounded.arrowRight01,
-                                  size: 16,
-                                  color: Colors.grey[400]!,
+                              SizedBox(
+                                width: 45,
+                                child: Center(
+                                  child: HugeIcon(
+                                    icon: HugeIconsStrokeRounded.arrowRight02,
+                                    size: 22,
+                                    color: themeColor,
+                                  ),
                                 ),
                               ),
                               Expanded(
-                                flex: 2,
+                                flex: 3,
                                 child: Text(
                                   to,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                '$symbol ${formatAmount(tx.amount)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: themeColor,
-                                  fontSize: 16,
+                              SizedBox(
+                                width: 85,
+                                child: Text(
+                                  '$symbol ${formatAmount(tx.amount)}',
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: themeColor,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2281,7 +2302,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(25),
                       ),
                       elevation: 0,
                     ),
