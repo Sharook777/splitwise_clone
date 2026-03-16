@@ -122,7 +122,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
             children: [
               // Custom Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: _isSearching
                     ? _buildSearchField(themeColor)
                     : _buildDefaultHeader(themeColor),
@@ -242,68 +242,75 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   Widget _buildSearchField(Color themeColor) {
-    return TextField(
-      controller: _searchController,
-      autofocus: true,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black87,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Search groups...',
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
-        prefixIcon: SizedBox(
-          width: 35,
-          height: 35,
-          child: Center(
-            child: HugeIcon(
-              icon: HugeIconsStrokeRounded.search01,
-              size: 24.0,
-              strokeWidth: 2,
-              color: themeColor,
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: _searchController,
+        autofocus: true,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
         ),
-        suffixIcon: GestureDetector(
-          onTap: () {
-            if (_searchController.text.isNotEmpty) {
-              _searchController.clear();
-              _performSearch('');
-            } else {
-              setState(() {
-                _isSearching = false;
-                _searchController.clear();
-                _searchResults = [];
-              });
-            }
-          },
-          child: SizedBox(
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Search groups...',
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+          prefixIcon: SizedBox(
             width: 35,
             height: 35,
             child: Center(
               child: HugeIcon(
-                icon: HugeIconsStrokeRounded.cancel01,
+                icon: HugeIconsStrokeRounded.search01,
                 size: 24.0,
                 strokeWidth: 2,
-                color: Colors.grey[600],
+                color: themeColor,
               ),
             ),
           ),
+          suffixIcon: GestureDetector(
+            onTap: () {
+              if (_searchController.text.isNotEmpty) {
+                _searchController.clear();
+                _performSearch('');
+              } else {
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchResults = [];
+                });
+              }
+            },
+            child: SizedBox(
+              width: 35,
+              height: 35,
+              child: Center(
+                child: HugeIcon(
+                  icon: HugeIconsStrokeRounded.cancel01,
+                  size: 24.0,
+                  strokeWidth: 2,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 4,
+            horizontal: 8,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide(color: themeColor, width: 2),
+          ),
         ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(25),
-          borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(25),
-          borderSide: BorderSide(color: themeColor, width: 2),
-        ),
+        onChanged: _performSearch,
       ),
-      onChanged: _performSearch,
     );
   }
 

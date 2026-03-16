@@ -78,14 +78,13 @@ String getSplitHeader({required double total, required int memberCount}) {
   double exact = total / memberCount;
 
   int totalCents = (total * 100).round();
-  int base = totalCents ~/ memberCount;
   int remainder = totalCents % memberCount;
 
   if (remainder == 0) {
-    return "${(base / 100).toStringAsFixed(2)}/Person";
+    return "${formatAmount(exact)}/Person";
   }
 
-  return "~${exact.toStringAsFixed(2)}/Person";
+  return "~${formatAmount(exact)}/Person";
 }
 
 String sumMapValues(Map<String, double> data) {
@@ -107,4 +106,9 @@ String sumMapPercentage(Map<String, double> data) {
   String values = sumMapValues(data);
 
   return "Percentage: $values%";
+}
+
+String formatAmount(double v) {
+  if (v == 0) return '';
+  return v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
 }

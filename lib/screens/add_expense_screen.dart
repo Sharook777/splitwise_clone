@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/session_service.dart';
+import '../services/database_service.dart';
+import '../models/expense_model.dart';
 import '../utils/split_engine.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/percentage_field.dart';
@@ -13,11 +15,15 @@ import '../widgets/percentage_field.dart';
 class AddExpenseScreen extends StatefulWidget {
   final Group group;
   final List<User> members;
+  final Expense? existingExpense;
+  final List<ExpenseSplit>? existingSplits;
 
   const AddExpenseScreen({
     super.key,
     required this.group,
     required this.members,
+    this.existingExpense,
+    this.existingSplits,
   });
 
   @override
@@ -48,12 +54,38 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     _amountController.addListener(_onAmountChanged);
 
-    // Initialize split values
-    for (var m in widget.members) {
-      if (_splitType == 'Shares') {
-        _splitValues[m.email] = 1.0;
-      } else {
-        _splitValues[m.email] = 0.0;
+    if (widget.existingExpense != null) {
+      _descriptionController.text = widget.existingExpense!.description;
+      _amountController.text = formatAmount(widget.existingExpense!.amount);
+      _selectedDate = widget.existingExpense!.date;
+      _splitType = widget.existingExpense!.splitType;
+      
+      _paidBy = widget.members.firstWhere(
+        (m) => m.email.toLowerCase() == widget.existingExpense!.paidByEmail.toLowerCase(),
+        orElse: () => widget.members.first,
+      );
+
+      if (widget.existingSplits != null) {
+        for (var split in widget.existingSplits!) {
+          final member = widget.members.firstWhere(
+            (m) => m.email.toLowerCase() == split.userEmail.toLowerCase(),
+            orElse: () => User(id: 0, name: split.userEmail, email: split.userEmail, createdAt: DateTime.now())
+          );
+          if (member.id != 0) {
+            _selectedSplitMembers.add(member);
+            _splitValues[member.email] = split.splitValue ?? split.amount;
+            _splitAmounts[member.email] = split.amount;
+          }
+        }
+      }
+    } else {
+      // Initialize default split values for new expense
+      for (var m in widget.members) {
+        if (_splitType == 'Shares') {
+          _splitValues[m.email] = 1.0;
+        } else {
+          _splitValues[m.email] = 0.0;
+        }
       }
     }
   }
@@ -137,10 +169,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _currentUserEmail = await SessionService.getUserEmail();
     if (_currentUserEmail != null) {
       setState(() {
-        _paidBy = widget.members.firstWhere(
-          (m) => m.email.toLowerCase() == _currentUserEmail?.toLowerCase(),
-          orElse: () => widget.members.first,
-        );
+        if (widget.existingExpense == null) {
+          _paidBy = widget.members.firstWhere(
+            (m) => m.email.toLowerCase() == _currentUserEmail?.toLowerCase(),
+            orElse: () => widget.members.first,
+          );
+        }
 
         // Reorder members to put "Me" first
         _sortedMembers.sort((a, b) {
@@ -157,13 +191,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _onSave() async {
-    if (_descriptionController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter a description');
+    if (_amountController.text.isEmpty) {
+      _showErrorSnackBar('Please enter an amount');
       return;
     }
 
-    if (_amountController.text.isEmpty) {
-      _showErrorSnackBar('Please enter an amount');
+    if (_descriptionController.text.trim().isEmpty) {
+      _showErrorSnackBar('Please enter a description');
       return;
     }
 
@@ -222,8 +256,63 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
     }
 
-    // TODO: Actually save the expense to DatabaseService
-    Navigator.pop(context);
+    final expense = Expense(
+      groupId: widget.group.id!,
+      description: _descriptionController.text.trim(),
+      amount: totalAmount,
+      date: _selectedDate,
+      paidByEmail: _paidBy!.email,
+      splitType: _splitType,
+      createdAt: DateTime.now(),
+    );
+
+    List<ExpenseSplit> splits = [];
+    for (var member in _selectedSplitMembers) {
+      double splitAmount = 0.0;
+      if (_splitType == 'Exact Amount') {
+        splitAmount = _splitValues[member.email] ?? 0.0;
+      } else {
+        splitAmount = _splitAmounts[member.email] ?? 0.0;
+      }
+
+      double? splitValue;
+      if (_splitType == 'Percentage' || _splitType == 'Shares') {
+        splitValue = _splitValues[member.email];
+      }
+
+      splits.add(
+        ExpenseSplit(
+          expenseId: 0, // Assigned by DB
+          userEmail: member.email,
+          amount: splitAmount,
+          splitValue: splitValue,
+        ),
+      );
+    }
+
+    try {
+      if (widget.existingExpense != null) {
+        final updatedExpense = Expense(
+          id: widget.existingExpense!.id,
+          groupId: expense.groupId,
+          description: expense.description,
+          amount: expense.amount,
+          date: expense.date,
+          paidByEmail: expense.paidByEmail,
+          splitType: expense.splitType,
+          createdAt: expense.createdAt,
+        );
+        await DatabaseService.updateExpense(updatedExpense, splits);
+      } else {
+        await DatabaseService.insertExpense(expense, splits);
+      }
+      
+      if (mounted) {
+        Navigator.pop(context, true); // Return true to indicate it was added/updated
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to save expense: $e');
+    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -266,9 +355,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           HugeIconsStrokeRounded.arrowLeft01,
                           onTap: () => Navigator.pop(context),
                         ),
-                        const Text(
-                          'Add Expense',
-                          style: TextStyle(
+                        Text(
+                          widget.existingExpense != null ? 'Edit Expense' : 'Add Expense',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: Colors.black,
@@ -406,6 +495,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: TextField(
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
                                     controller: _descriptionController,
                                     style: const TextStyle(
                                       fontSize: 15,
@@ -647,7 +738,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                       ),
                                       if (isSelected && _splitType == 'Equally')
                                         Text(
-                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
+                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
                                           style: TextStyle(
                                             color: themeColor,
                                             fontSize: 14,
@@ -665,7 +756,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                                         'Percentage' ||
                                                     _splitType == 'Share')
                                                   Text(
-                                                    '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
+                                                    '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
                                                     style: TextStyle(
                                                       color: themeColor,
                                                       fontSize: 12,

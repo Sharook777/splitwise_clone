@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:intl/intl.dart';
+import '../models/expense_model.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
+import '../utils/split_engine.dart';
 import '../widgets/add_member_full_screen_dialog.dart';
 import 'add_expense_screen.dart';
 
@@ -20,8 +22,11 @@ class GroupDetailScreen extends StatefulWidget {
 
 class _GroupDetailScreenState extends State<GroupDetailScreen>
     with SingleTickerProviderStateMixin {
+  late Group _currentGroup;
   List<User> _members = [];
+  List<Expense> _expenses = [];
   bool _isLoadingMembers = true;
+  bool _isLoadingExpenses = true;
   late TabController _tabController;
   late String _groupName;
   String? _currency;
@@ -32,13 +37,52 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   @override
   void initState() {
     super.initState();
+    _currentGroup = widget.group;
     _tabController = TabController(length: 3, vsync: this);
-    _groupName = widget.group.name;
-    _currency = widget.group.currency;
-    _startDate = widget.group.startDate;
-    _endDate = widget.group.endDate;
-    _budget = widget.group.budget;
+    _initGroupData();
     _loadMembers();
+    _loadExpenses();
+  }
+
+  void _initGroupData() {
+    _groupName = _currentGroup.name;
+    _currency = _currentGroup.currency;
+    _startDate = _currentGroup.startDate;
+    _endDate = _currentGroup.endDate;
+    _budget = _currentGroup.budget;
+  }
+
+  Future<void> _refreshGroup() async {
+    if (_currentGroup.id != null) {
+      final updatedGroup = await DatabaseService.getGroupById(
+        _currentGroup.id!,
+      );
+      if (updatedGroup != null && mounted) {
+        setState(() {
+          _currentGroup = updatedGroup;
+          _initGroupData();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadExpenses() async {
+    try {
+      if (_currentGroup.id != null) {
+        final expenses = await DatabaseService.getGroupExpenses(
+          _currentGroup.id!,
+        );
+        if (mounted) {
+          setState(() {
+            _expenses = expenses;
+            _isLoadingExpenses = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading expenses: $e');
+      if (mounted) setState(() => _isLoadingExpenses = false);
+    }
   }
 
   @override
@@ -49,12 +93,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   Future<void> _loadMembers() async {
     try {
-      if (widget.group.id != null) {
-        final members = await DatabaseService.getGroupMembers(widget.group.id!);
-        setState(() {
-          _members = members;
-          _isLoadingMembers = false;
-        });
+      if (_currentGroup.id != null) {
+        final members = await DatabaseService.getGroupMembers(
+          _currentGroup.id!,
+        );
+        if (mounted) {
+          setState(() {
+            _members = members;
+            _isLoadingMembers = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error loading group members: $e');
@@ -93,7 +141,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   child: Column(
                     children: [
                       Hero(
-                        tag: 'group-icon-${widget.group.id}',
+                        tag: 'group-icon-${_currentGroup.id}',
                         child: Container(
                           width: 50,
                           height: 50,
@@ -118,12 +166,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                         ),
                       ),
                       const SizedBox(height: 1),
-                      Text(
-                        '${_members.length} Member${_members.length != 1 ? 's' : ''}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 14,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_currency != null && _currency!.isNotEmpty) ...[
+                            Text(
+                              _currency!.split(' ').first,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              ' • ',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                          Text(
+                            '${_members.length} Member${_members.length != 1 ? 's' : ''}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -264,23 +334,38 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         children: [
           ListView(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
-            children: [_buildEmptyActivity(themeColor)],
+            children: [
+              if (_isLoadingExpenses)
+                const Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_expenses.isEmpty)
+                _buildEmptyActivity(themeColor)
+              else
+                _buildExpensesList(themeColor),
+            ],
           ),
           Positioned(
             bottom: 10,
             left: 40,
             right: 40,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => AddExpenseScreen(
-                      group: widget.group,
+                      group: _currentGroup,
                       members: _members,
                     ),
                   ),
                 );
+                // Refresh expenses and group data if an expense was added
+                if (result == true) {
+                  _loadExpenses();
+                  _refreshGroup();
+                }
               },
               icon: const HugeIcon(
                 icon: HugeIconsStrokeRounded.addInvoice,
@@ -305,6 +390,211 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExpensesList(Color themeColor) {
+    final double totalAmount = _expenses.fold(0.0, (sum, e) => sum + e.amount);
+    final symbol = _currency != null && _currency!.isNotEmpty
+        ? _currency!.split(' ').first
+        : '\$';
+
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 15),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: themeColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Expenses',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$symbol ${formatAmount(totalAmount)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: List.generate(_expenses.length, (index) {
+              final expense = _expenses[index];
+              final dt = DateFormat('MMM dd').format(expense.date);
+
+              final payer = _members.firstWhere(
+                (m) =>
+                    m.email.toLowerCase() == expense.paidByEmail.toLowerCase(),
+                orElse: () => User(
+                  id: 0,
+                  name: expense.paidByEmail,
+                  email: expense.paidByEmail,
+                  createdAt: DateTime.now(),
+                ),
+              );
+
+              final payerName = expense.paidByName ?? payer.name;
+
+              return Column(
+                children: [
+                  ListTile(
+                    onTap: () async {
+                      if (expense.id != null) {
+                        final splits = await DatabaseService.getExpenseSplits(
+                          expense.id!,
+                        );
+                        if (mounted) {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddExpenseScreen(
+                                group: _currentGroup,
+                                members: _members,
+                                existingExpense: expense,
+                                existingSplits: splits,
+                              ),
+                            ),
+                          );
+                          if (result == true) {
+                            _loadExpenses();
+                            _refreshGroup();
+                          }
+                        }
+                      }
+                    },
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    leading: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: themeColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIconsStrokeRounded.invoice01,
+                          color: themeColor,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      expense.description,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Paid by $payerName',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '$symbol ${formatAmount(expense.amount)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              dt,
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const HugeIcon(
+                            icon: HugeIconsStrokeRounded.delete02,
+                            color: Colors.redAccent,
+                            size: 17,
+                          ),
+                          onPressed: () => _deleteExpense(expense, themeColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _deleteExpense(Expense expense, Color themeColor) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Delete Expense',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Are you sure you want to delete "${expense.description}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (expense.id != null) {
+                  await DatabaseService.deleteExpense(expense.id!);
+                  _loadExpenses();
+                  _refreshGroup();
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -365,7 +655,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 title: 'Edit Group Name',
                 subtitle: _groupName,
                 color: themeColor,
-                onTap: () => _showEditGroupNameSheet(themeColor),
+                onTap: () async {
+                  await _showEditGroupNameSheet(themeColor);
+                  _refreshGroup();
+                },
               ),
               _buildSettingsDivider(),
               _buildSettingsTile(
@@ -373,7 +666,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 title: 'Set Currency',
                 subtitle: _currency ?? 'Not set',
                 color: themeColor,
-                onTap: () => _showSetCurrencyDialog(themeColor),
+                onTap: () async {
+                  await _showSetCurrencyDialog(themeColor);
+                  _refreshGroup();
+                },
               ),
               _buildSettingsDivider(),
               _buildSettingsTile(
@@ -384,7 +680,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           .trim()
                     : 'Not set',
                 color: themeColor,
-                onTap: () => _showSetBudgetDialog(themeColor),
+                onTap: () async {
+                  await _showSetBudgetDialog(themeColor);
+                  _refreshGroup();
+                },
               ),
               _buildSettingsDivider(),
               _buildSettingsTile(
@@ -392,7 +691,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 title: 'Set Dates',
                 subtitle: _formatDateRange(),
                 color: themeColor,
-                onTap: () => _showSetDatesDialog(themeColor),
+                onTap: () async {
+                  await _showSetDatesDialog(themeColor);
+                  _refreshGroup();
+                },
               ),
             ],
           ),
@@ -474,11 +776,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   // ── Bottom Sheets & Dialogs ────────────────────────────
 
-  void _showEditGroupNameSheet(Color themeColor) {
+  Future<void> _showEditGroupNameSheet(Color themeColor) {
     final controller = TextEditingController(text: _groupName);
     final formKey = GlobalKey<FormState>();
 
-    showModalBottomSheet(
+    return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
@@ -675,7 +977,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
   }
 
-  void _showSetCurrencyDialog(Color themeColor) {
+  Future<void> _showSetCurrencyDialog(Color themeColor) {
     final allCurrencies = [
       {'code': '\$ USD', 'name': 'US Dollar'},
       {'code': '₹ INR', 'name': 'Indian Rupee'},
@@ -711,7 +1013,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     List<Map<String, String>> displayedCurrencies = List.from(allCurrencies);
     final searchController = TextEditingController();
 
-    showDialog(
+    return showDialog(
       context: context,
       useSafeArea: false,
       builder: (ctx) {
@@ -957,11 +1259,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
   }
 
-  void _showSetDatesDialog(Color themeColor) {
+  Future<void> _showSetDatesDialog(Color themeColor) {
     DateTime? from = _startDate;
     DateTime? to = _endDate;
 
-    showDialog(
+    return showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -1169,13 +1471,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
   }
 
-  void _showSetBudgetDialog(Color themeColor) {
+  Future<void> _showSetBudgetDialog(Color themeColor) {
     final controller = TextEditingController(
       text: _budget != null ? _budget!.toStringAsFixed(0) : '',
     );
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    return showDialog(
       context: context,
       builder: (ctx) {
         return Dialog(
@@ -1304,10 +1606,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
   }
 
-  void _showDeleteGroupDialog(Color themeColor) {
+  Future<void> _showDeleteGroupDialog(Color themeColor) {
     bool confirmed = false;
 
-    showDialog(
+    return showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -1438,7 +1740,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   // ── Reusable Widgets ──────────────────────────────────
 
-
   Widget _buildMembersSection(Color themeColor) {
     if (_isLoadingMembers) {
       return const Center(
@@ -1503,7 +1804,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   member.email,
                   style: TextStyle(color: Colors.grey[500], fontSize: 13),
                 ),
-                trailing: member.id != widget.group.createdBy
+                trailing: member.id != _currentGroup.createdBy
                     ? IconButton(
                         icon: const Icon(
                           Icons.remove_circle_outline,
@@ -1612,9 +1913,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (widget.group.id != null) {
+                          if (_currentGroup.id != null) {
                             await DatabaseService.removeMemberFromGroup(
-                              widget.group.id!,
+                              _currentGroup.id!,
                               member.email,
                             );
                             _loadMembers();
@@ -1653,7 +1954,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       builder: (ctx) {
         return AddMemberFullScreenDialog(
           themeColor: themeColor,
-          group: widget.group,
+          group: _currentGroup,
           existingMembers: _members,
           onMembersAdded: _loadMembers,
         );

@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import '../models/user_model.dart';
 
 import '../models/group_model.dart';
+import '../models/expense_model.dart';
 
 /// Service to manage User data in SQLite (local relational storage).
 class DatabaseService {
@@ -23,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -80,6 +81,31 @@ class DatabaseService {
             'ALTER TABLE groups ADD COLUMN budget REAL',
           );
         }
+        if (oldVersion < 7) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              group_id INTEGER NOT NULL,
+              description TEXT NOT NULL,
+              amount REAL NOT NULL,
+              date TEXT NOT NULL,
+              paid_by_email TEXT NOT NULL,
+              split_type TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS expense_splits (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              expense_id INTEGER NOT NULL,
+              user_email TEXT NOT NULL,
+              amount REAL NOT NULL,
+              split_value REAL,
+              FOREIGN KEY (expense_id) REFERENCES expenses (id) ON DELETE CASCADE
+            )
+          ''');
+        }
       },
     );
   }
@@ -123,6 +149,29 @@ class DatabaseService {
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE,
         FOREIGN KEY (friend_id) REFERENCES friends (id),
         UNIQUE(group_id, user_email)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        paid_by_email TEXT NOT NULL,
+        split_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS expense_splits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL,
+        user_email TEXT NOT NULL,
+        amount REAL NOT NULL,
+        split_value REAL,
+        FOREIGN KEY (expense_id) REFERENCES expenses (id) ON DELETE CASCADE
       )
     ''');
   }
@@ -342,5 +391,97 @@ class DatabaseService {
   static Future<int> deleteGroup(int groupId) async {
     final db = await database;
     return await db.delete('groups', where: 'id = ?', whereArgs: [groupId]);
+  }
+  /// Get a single group by ID
+  static Future<Group?> getGroupById(int groupId) async {
+    final db = await database;
+    final results = await db.query(
+      'groups',
+      where: 'id = ?',
+      whereArgs: [groupId],
+      limit: 1,
+    );
+    if (results.isNotEmpty) {
+      return Group.fromMap(results.first);
+    }
+    return null;
+  }
+
+  /// Insert an expense and its splits within a transaction
+  static Future<int> insertExpense(Expense expense, List<ExpenseSplit> splits) async {
+    final db = await database;
+    return await db.transaction((txn) async {
+      final expenseId = await txn.insert('expenses', expense.toMap());
+      
+      for (var split in splits) {
+        var splitMap = split.toMap();
+        splitMap['expense_id'] = expenseId; // set foreign key
+        await txn.insert('expense_splits', splitMap);
+      }
+      
+      return expenseId;
+    });
+  }
+
+  /// Get expenses for a specific group, ordered by date descending
+  static Future<List<Expense>> getGroupExpenses(int groupId) async {
+    final db = await database;
+    final results = await db.rawQuery(
+      '''
+      SELECT e.*, u.name as paid_by_name 
+      FROM expenses e
+      INNER JOIN users u ON LOWER(e.paid_by_email) = LOWER(u.email)
+      WHERE e.group_id = ?
+      ORDER BY e.date DESC, e.id DESC
+      ''',
+      [groupId],
+    );
+    return results.map((map) => Expense.fromMap(map)).toList();
+  }
+
+  /// Delete an expense (cascade deletes expense_splits)
+  static Future<int> deleteExpense(int expenseId) async {
+    final db = await database;
+    return await db.delete('expenses', where: 'id = ?', whereArgs: [expenseId]);
+  }
+
+  /// Get splits for a specific expense
+  static Future<List<ExpenseSplit>> getExpenseSplits(int expenseId) async {
+    final db = await database;
+    final results = await db.query(
+      'expense_splits',
+      where: 'expense_id = ?',
+      whereArgs: [expenseId],
+    );
+    return results.map((map) => ExpenseSplit.fromMap(map)).toList();
+  }
+
+  /// Update an expense and its splits within a transaction
+  static Future<void> updateExpense(Expense expense, List<ExpenseSplit> splits) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Update main expense record
+      await txn.update(
+        'expenses',
+        expense.toMap(),
+        where: 'id = ?',
+        whereArgs: [expense.id],
+      );
+      
+      // Delete old splits
+      await txn.delete(
+        'expense_splits',
+        where: 'expense_id = ?',
+        whereArgs: [expense.id],
+      );
+      
+      // Insert new splits
+      for (var split in splits) {
+        var splitMap = split.toMap();
+        splitMap['id'] = null; // Ensure new ID is generated
+        splitMap['expense_id'] = expense.id; 
+        await txn.insert('expense_splits', splitMap);
+      }
+    });
   }
 }
