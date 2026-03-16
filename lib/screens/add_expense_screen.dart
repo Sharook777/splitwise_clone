@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/session_service.dart';
+import '../utils/split_engine.dart';
+import '../widgets/amount_field.dart';
+import '../widgets/percentage_field.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Group group;
@@ -27,12 +30,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _currentUserEmail;
   User? _paidBy;
-  String _splitType = 'Equally'; // Equally, Uniquely, Percentage, Shares
+  String _splitType = 'Equally'; // Equally, Exact Amount, Percentage, Shares
 
-  // email -> value (depending on _splitType)
   Map<String, double> _splitValues = {};
+  Map<String, double> _splitAmounts = {};
   List<User> _selectedSplitMembers = [];
   List<User> _sortedMembers = [];
+
+  int seed = DateTime.now().millisecondsSinceEpoch;
 
   @override
   void initState() {
@@ -55,7 +60,68 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _onAmountChanged() {
     if (_splitType == 'Equally') {
-      setState(() {}); // Trigger rebuild to update split amounts
+      setState(() {
+        _splitAmounts = smartSplit(
+          total: double.tryParse(_amountController.text) ?? 0.0,
+          members: _selectedSplitMembers
+              .map((e) => SplitMember(email: e.email))
+              .toList(),
+          seed: seed,
+          mode: 'equal',
+        );
+        _splitValues = _splitAmounts;
+      });
+    }
+    if (_splitType == 'Exact Amount') {
+      setState(() {
+        _splitAmounts = smartSplit(
+          total: double.tryParse(_amountController.text) ?? 0.0,
+          members: _selectedSplitMembers
+              .map(
+                (e) => SplitMember(
+                  email: e.email,
+                  manualAmount: _splitValues[e.email],
+                ),
+              )
+              .toList(),
+          seed: seed,
+          mode: 'manual',
+        );
+      });
+    }
+    if (_splitType == 'Percentage') {
+      setState(() {
+        _splitAmounts = smartSplit(
+          total: double.tryParse(_amountController.text) ?? 0.0,
+          members: _selectedSplitMembers
+              .map(
+                (e) => SplitMember(
+                  email: e.email,
+                  percentage: _splitValues[e.email],
+                ),
+              )
+              .toList(),
+          seed: seed,
+          mode: 'percentage',
+        );
+      });
+    }
+    if (_splitType == 'Shares') {
+      setState(() {
+        _splitAmounts = smartSplit(
+          total: double.tryParse(_amountController.text) ?? 0.0,
+          members: _selectedSplitMembers
+              .map(
+                (e) => SplitMember(
+                  email: e.email,
+                  weight: _splitValues[e.email]?.toInt() ?? 1,
+                ),
+              )
+              .toList(),
+          seed: seed,
+          mode: 'weighted',
+        );
+      });
     }
   }
 
@@ -118,7 +184,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
 
     // Split logic validation
-    if (_splitType == 'Uniquely (Exact)') {
+    if (_splitType == 'Exact Amount') {
       double sum = _selectedSplitMembers.fold(
         0,
         (sum, member) => sum + (_splitValues[member.email] ?? 0),
@@ -430,7 +496,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: _buildSelectionTile(
-                          title: 'Split',
+                          title: 'Split by',
                           value: _splitType,
                           icon: HugeIconsStrokeRounded.divideSign,
                           onTap: _showSplitTypeDialog,
@@ -491,7 +557,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                             );
                                           } else {
                                             _selectedSplitMembers.add(member);
+                                            _splitValues[member.email] = 0;
                                           }
+                                          _onAmountChanged();
                                         });
                                       },
                                       child: HugeIcon(
@@ -534,9 +602,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                     ),
                                     if (isSelected && _splitType == 'Equally')
                                       Text(
-                                        '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_calculateSplitAmount(member.email)}',
+                                        '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
                                         style: TextStyle(
-                                          color: themeColor.withOpacity(0.7),
+                                          color: themeColor,
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -546,78 +614,52 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.end,
                                         children: [
-                                          Container(
-                                            width: 100,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF5F5F5),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: TextField(
-                                              keyboardType:
-                                                  const TextInputType.numberWithOptions(
-                                                    decimal: true,
-                                                  ),
-                                              inputFormatters: [
-                                                FilteringTextInputFormatter.allow(
-                                                  RegExp(
-                                                    r'^\d{0,6}(\.?\d{0,2})',
+                                          Row(
+                                            children: [
+                                              if (_splitType == 'Percentage' ||
+                                                  _splitType == 'Share')
+                                                Text(
+                                                  '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_splitAmounts[member.email] ?? 0}',
+                                                  style: TextStyle(
+                                                    color: themeColor,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
-                                              ],
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.normal,
-                                                height: 1,
-                                                color: themeColor,
-                                              ),
-                                              decoration: InputDecoration(
-                                                isDense: true,
-                                                hintText:
-                                                    _splitType == 'Percentage'
-                                                    ? '0%'
-                                                    : '0',
-                                                suffixText:
-                                                    _splitType == 'Percentage'
-                                                    ? '%'
-                                                    : null,
-                                                hintStyle: TextStyle(
-                                                  color: Colors.grey[600],
-                                                  fontSize: 14,
-                                                  height: 1,
+                                              const SizedBox(width: 4),
+                                              if (_splitType == 'Exact Amount')
+                                                AmountField(
+                                                  value:
+                                                      _splitAmounts[member
+                                                          .email] ??
+                                                      0,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      _splitAmounts[member
+                                                              .email] =
+                                                          value;
+                                                    });
+                                                  },
+                                                  themeColor: themeColor,
                                                 ),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 12,
-                                                      horizontal: 8,
-                                                    ),
-                                                suffixStyle: TextStyle(
-                                                  color: themeColor,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                                border: InputBorder.none,
-                                              ),
-                                              onChanged: (val) {
-                                                double d =
-                                                    double.tryParse(val) ?? 0.0;
-                                                setState(
-                                                  () =>
+                                              if (_splitType == 'Percentage')
+                                                PercentageField(
+                                                  value:
+                                                      _splitValues[member
+                                                          .email] ??
+                                                      0,
+                                                  themeColor: themeColor,
+                                                  onChanged: (val) {
+                                                    setState(() {
                                                       _splitValues[member
                                                               .email] =
-                                                          d,
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${_calculateSplitAmount(member.email)}',
-                                            style: TextStyle(
-                                              color: Colors.grey[500],
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                          val;
+                                                    });
+
+                                                    _onAmountChanged();
+                                                  },
+                                                ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -638,48 +680,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         ),
       ),
     );
-  }
-
-  String _calculateSplitAmount(String email) {
-    if (!_selectedSplitMembers.any((m) => m.email == email)) return '0.00';
-    double total = double.tryParse(_amountController.text) ?? 0.0;
-    if (total <= 0 || _selectedSplitMembers.isEmpty) return '0.00';
-
-    if (_splitType == 'Equally') {
-      // Calculate basic per-person amount
-      double perPerson =
-          (total / _selectedSplitMembers.length * 100).floorToDouble() / 100.0;
-
-      // Calculate total distributed so far
-      double distributed = perPerson * _selectedSplitMembers.length;
-
-      // Calculate remainder in cents
-      double remainder = (total - distributed);
-
-      // We'll give the remainder to the person who appears first in the sorted list
-      final firstSelectedMember = _sortedMembers.firstWhere(
-        (m) => _selectedSplitMembers.any((sm) => sm.email == m.email),
-      );
-      if (email == firstSelectedMember.email) {
-        return (perPerson + remainder).toStringAsFixed(2);
-      }
-      return perPerson.toStringAsFixed(2);
-    } else if (_splitType == 'Percentage') {
-      double percentage = _splitValues[email] ?? 0.0;
-      return (total * percentage / 100).toStringAsFixed(2);
-    } else if (_splitType == 'Shares') {
-      double totalShares = _selectedSplitMembers.fold(
-        0,
-        (sum, m) => sum + (_splitValues[m.email] ?? 0),
-      );
-      if (totalShares <= 0) return '0.00';
-      double userShares = _splitValues[email] ?? 0.0;
-      return (total * userShares / totalShares).toStringAsFixed(2);
-    } else if (_splitType == 'Uniquely (Exact)') {
-      return (_splitValues[email] ?? 0.0).toStringAsFixed(2);
-    }
-
-    return '0.00';
   }
 
   Widget _buildActionButton({
@@ -799,7 +799,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _showPaidByDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFECECEC),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -813,52 +813,95 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 'Who paid?',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
               Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: widget.members.length,
-                  itemBuilder: (context, index) {
-                    final member = widget.members[index];
-                    bool isMe =
-                        member.email.toLowerCase() ==
-                        _currentUserEmail?.toLowerCase();
-                    bool isSelected = _paidBy?.email == member.email;
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey[200],
-                        radius: 12,
-                        child: Text(
-                          member.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.grey[600],
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFECECEC),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _sortedMembers.length,
+                    itemBuilder: (context, index) {
+                      final member = _sortedMembers[index];
+                      bool isMe =
+                          member.email.toLowerCase() ==
+                          _currentUserEmail?.toLowerCase();
+                      bool isSelected = _paidBy?.email == member.email;
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Theme.of(context).primaryColor
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).primaryColor
+                                : Colors.transparent,
+                            width: 2,
                           ),
                         ),
-                      ),
-                      title: Text(
-                        isMe ? 'Me' : member.name,
-                        style: TextStyle(
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isSelected
+                                ? Colors.white
+                                : Colors.grey[200],
+                            radius: 15,
+                            child: Text(
+                              member.name[0].toUpperCase(),
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey[600],
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isMe ? 'Me' : member.name,
+                                style: TextStyle(
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                              Text(
+                                member.email,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.grey[600],
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: isSelected
+                              ? HugeIcon(
+                                  icon:
+                                      HugeIconsStrokeRounded.checkmarkCircle02,
+                                  color: Colors.white,
+                                  size: 22,
+                                )
+                              : null,
+                          onTap: () {
+                            setState(() => _paidBy = member);
+                            Navigator.pop(context);
+                          },
                         ),
-                      ),
-                      trailing: isSelected
-                          ? Icon(
-                              Icons.check,
-                              color: Theme.of(context).primaryColor,
-                            )
-                          : null,
-                      onTap: () {
-                        setState(() => _paidBy = member);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -878,6 +921,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: Color(0xFFECECEC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -885,18 +932,31 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 'How should we split this?',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
-              _buildSplitTypeOption('Equally', 'Divide the cost among members'),
-              _buildSplitTypeOption(
-                'Uniquely (Exact)',
-                'Enter exact amount per member',
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Color(0xFFECECEC),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildSplitTypeOption(
+                      'Equally',
+                      'Split the cost equally among members',
+                    ),
+                    _buildSplitTypeOption(
+                      'Exact Amount',
+                      'Enter exact amount per member',
+                    ),
+                    _buildSplitTypeOption(
+                      'Percentage',
+                      'Split by percentage of total',
+                    ),
+                    // _buildSplitTypeOption('Shares', 'Split by multiple shares'),
+                  ],
+                ),
               ),
-              _buildSplitTypeOption(
-                'Percentage',
-                'Split by percentage of total',
-              ),
-              _buildSplitTypeOption('Shares', 'Split by multiple shares'),
-              const SizedBox(height: 20),
             ],
           ),
         );
@@ -906,27 +966,52 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   Widget _buildSplitTypeOption(String type, String sub) {
     bool isSelected = _splitType == type;
-    return ListTile(
-      title: Text(
-        type,
-        style: TextStyle(
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isSelected ? Theme.of(context).primaryColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.transparent,
+          width: 2,
         ),
       ),
-      subtitle: Text(sub, style: const TextStyle(fontSize: 12)),
-      trailing: isSelected
-          ? Icon(Icons.check_circle, color: Theme.of(context).primaryColor)
-          : null,
-      onTap: () {
-        setState(() {
-          _splitType = type;
-          // Reset split values based on type
-          for (var m in widget.members) {
-            _splitValues[m.email] = (type == 'Shares' ? 1.0 : 0.0);
-          }
-        });
-        Navigator.pop(context);
-      },
+      child: ListTile(
+        title: Text(
+          type,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : Colors.black,
+          ),
+        ),
+        subtitle: Text(
+          sub,
+          style: TextStyle(
+            fontSize: 12,
+            color: isSelected ? Colors.white : Colors.grey[600],
+          ),
+        ),
+        trailing: isSelected
+            ? HugeIcon(
+                icon: HugeIconsStrokeRounded.checkmarkCircle02,
+                color: Colors.white,
+                size: 22,
+              )
+            : null,
+        onTap: () {
+          setState(() {
+            _splitType = type;
+            // Reset split values based on type
+            for (var m in widget.members) {
+              _splitValues[m.email] = (type == 'Shares' ? 1.0 : 0.0);
+            }
+          });
+          _onAmountChanged();
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
