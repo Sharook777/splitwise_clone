@@ -484,4 +484,18 @@ class DatabaseService {
       }
     });
   }
+
+  /// Get all splits for all expenses in a group
+  static Future<List<ExpenseSplit>> getAllExpenseSplitsForGroup(int groupId) async {
+    final db = await database;
+    final results = await db.rawQuery(
+      '''
+      SELECT es.* FROM expense_splits es
+      INNER JOIN expenses e ON es.expense_id = e.id
+      WHERE e.group_id = ?
+      ''',
+      [groupId],
+    );
+    return results.map((map) => ExpenseSplit.fromMap(map)).toList();
+  }
 }

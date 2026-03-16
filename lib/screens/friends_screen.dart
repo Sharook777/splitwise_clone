@@ -368,10 +368,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   }
                 },
               )
-            : Icon(
-                Icons.arrow_forward_ios_rounded,
+            : HugeIcon(
+                icon: HugeIconsStrokeRounded.arrowRight01,
                 size: 16,
-                color: Colors.grey[400],
+                color: Colors.grey[400]!,
               ),
         onTap: () {
           Navigator.push(

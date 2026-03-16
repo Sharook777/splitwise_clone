@@ -7,6 +7,7 @@ import '../models/expense_model.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
+import '../utils/debt_engine.dart';
 import '../utils/split_engine.dart';
 import '../widgets/add_member_full_screen_dialog.dart';
 import 'add_expense_screen.dart';
@@ -25,6 +26,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   late Group _currentGroup;
   List<User> _members = [];
   List<Expense> _expenses = [];
+  List<ExpenseSplit> _allSplits = [];
   bool _isLoadingMembers = true;
   bool _isLoadingExpenses = true;
   late TabController _tabController;
@@ -72,9 +74,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         final expenses = await DatabaseService.getGroupExpenses(
           _currentGroup.id!,
         );
+        final allSplits = await DatabaseService.getAllExpenseSplitsForGroup(
+          _currentGroup.id!,
+        );
         if (mounted) {
           setState(() {
             _expenses = expenses;
+            _allSplits = allSplits;
             _isLoadingExpenses = false;
           });
         }
@@ -173,19 +179,35 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             Text(
                               _currency!.split(' ').first,
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 14,
+                                color: Colors.white,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Text(
-                              ' • ',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 14,
-                              ),
-                            ),
+                            const SizedBox(width: 5),
                           ],
+
+                          Builder(
+                            builder: (_) {
+                              final double totalAmount = _expenses.fold(
+                                0.0,
+                                (sum, e) => sum + e.amount,
+                              );
+
+                              return Text(
+                                formatAmount(totalAmount),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            },
+                          ),
+                          Text(
+                            ' • ',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
                           Text(
                             '${_members.length} Member${_members.length != 1 ? 's' : ''}',
                             style: TextStyle(
@@ -394,163 +416,128 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   Widget _buildExpensesList(Color themeColor) {
-    final double totalAmount = _expenses.fold(0.0, (sum, e) => sum + e.amount);
     final symbol = _currency != null && _currency!.isNotEmpty
         ? _currency!.split(' ').first
         : '\$';
 
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 15),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: themeColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: List.generate(_expenses.length, (index) {
+          final expense = _expenses[index];
+          final dt = DateFormat('MMM dd').format(expense.date);
+
+          final payer = _members.firstWhere(
+            (m) => m.email.toLowerCase() == expense.paidByEmail.toLowerCase(),
+            orElse: () => User(
+              id: 0,
+              name: expense.paidByEmail,
+              email: expense.paidByEmail,
+              createdAt: DateTime.now(),
+            ),
+          );
+
+          final payerName = expense.paidByName ?? payer.name;
+
+          return Column(
             children: [
-              const Text(
-                'Total Expenses',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '$symbol ${formatAmount(totalAmount)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            children: List.generate(_expenses.length, (index) {
-              final expense = _expenses[index];
-              final dt = DateFormat('MMM dd').format(expense.date);
-
-              final payer = _members.firstWhere(
-                (m) =>
-                    m.email.toLowerCase() == expense.paidByEmail.toLowerCase(),
-                orElse: () => User(
-                  id: 0,
-                  name: expense.paidByEmail,
-                  email: expense.paidByEmail,
-                  createdAt: DateTime.now(),
-                ),
-              );
-
-              final payerName = expense.paidByName ?? payer.name;
-
-              return Column(
-                children: [
-                  ListTile(
-                    onTap: () async {
-                      if (expense.id != null) {
-                        final splits = await DatabaseService.getExpenseSplits(
-                          expense.id!,
-                        );
-                        if (mounted) {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddExpenseScreen(
-                                group: _currentGroup,
-                                members: _members,
-                                existingExpense: expense,
-                                existingSplits: splits,
-                              ),
-                            ),
-                          );
-                          if (result == true) {
-                            _loadExpenses();
-                            _refreshGroup();
-                          }
-                        }
-                      }
-                    },
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIconsStrokeRounded.invoice01,
-                          color: themeColor,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      expense.description,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Paid by $payerName',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '$symbol ${formatAmount(expense.amount)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              dt,
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const HugeIcon(
-                            icon: HugeIconsStrokeRounded.delete02,
-                            color: Colors.redAccent,
-                            size: 17,
+              ListTile(
+                onTap: () async {
+                  if (expense.id != null) {
+                    final splits = await DatabaseService.getExpenseSplits(
+                      expense.id!,
+                    );
+                    if (mounted) {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddExpenseScreen(
+                            group: _currentGroup,
+                            members: _members,
+                            existingExpense: expense,
+                            existingSplits: splits,
                           ),
-                          onPressed: () => _deleteExpense(expense, themeColor),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadExpenses();
+                        _refreshGroup();
+                      }
+                    }
+                  }
+                },
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: themeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIconsStrokeRounded.invoice01,
+                      color: themeColor,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  expense.description,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Text(
+                  'Paid by $payerName',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '$symbol ${formatAmount(expense.amount)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          dt,
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              );
-            }),
-          ),
-        ),
-      ],
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const HugeIcon(
+                        icon: HugeIconsStrokeRounded.delete02,
+                        color: Colors.redAccent,
+                        size: 18,
+                      ),
+                      onPressed: () => _deleteExpense(expense, themeColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
     );
   }
 
@@ -558,41 +545,83 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
-          title: const Text(
-            'Delete Expense',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Are you sure you want to delete "${expense.description}"?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (expense.id != null) {
-                  await DatabaseService.deleteExpense(expense.id!);
-                  _loadExpenses();
-                  _refreshGroup();
-                }
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: themeColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HugeIcon(
+                  icon: HugeIconsStrokeRounded.alertDiamond,
+                  color: themeColor,
+                  size: 60,
+                  strokeWidth: 2,
                 ),
-              ),
-              child: const Text('Delete'),
+                const SizedBox(height: 20),
+                const Text(
+                  'Delete Expense?',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This will permanently delete "${expense.description}" and all its split data. This action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (expense.id != null) {
+                            await DatabaseService.deleteExpense(expense.id!);
+                            _loadExpenses();
+                            _refreshGroup();
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: themeColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -756,10 +785,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           : null,
       trailing: !noTail
           ? null
-          : Icon(
-              Icons.arrow_forward_ios_rounded,
+          : HugeIcon(
+              icon: HugeIconsStrokeRounded.arrowRight01,
               size: 16,
-              color: Colors.grey[400],
+              color: Colors.grey[400]!,
             ),
       onTap: onTap,
     );
@@ -1460,10 +1489,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
+            HugeIcon(
+              icon: HugeIconsStrokeRounded.arrowRight01,
               size: 14,
-              color: Colors.grey[400],
+              color: Colors.grey[400]!,
             ),
           ],
         ),
@@ -1772,59 +1801,140 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-        children: List.generate(_members.length, (index) {
-          final member = _members[index];
-          return Column(
-            children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Group Members'.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[500],
+                    letterSpacing: 1,
+                  ),
                 ),
-                leading: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: themeColor.withOpacity(0.1),
-                  child: Text(
-                    member.name[0].toUpperCase(),
-                    style: TextStyle(
-                      color: themeColor,
+                TextButton.icon(
+                  onPressed: () => _showSimplifyDebtsDialog(themeColor),
+                  icon: HugeIcon(
+                    icon: HugeIconsStrokeRounded.aiMagic,
+                    color: themeColor,
+                    size: 20,
+                  ),
+                  label: const Text('Simplify'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: themeColor,
+                    visualDensity: VisualDensity.compact,
+                    textStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                title: Text(
-                  member.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+              ],
+            ),
+          ),
+          ...List.generate(_members.length, (index) {
+            final member = _members[index];
+            final balances = computeMemberBalances(_expenses, _allSplits);
+            final memberBalance = balances[member.email.toLowerCase()];
+            final symbol = _currency != null && _currency!.isNotEmpty
+                ? _currency!.split(' ').first
+                : '\$';
+
+            return Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  leading: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: themeColor.withOpacity(0.1),
+                    child: Text(
+                      member.name[0].toUpperCase(),
+                      style: TextStyle(
+                        color: themeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    member.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  subtitle: memberBalance != null && memberBalance.totalPaid > 0
+                      ? Text(
+                          'Spent $symbol ${formatAmount(memberBalance.totalPaid)}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 13,
+                          ),
+                        )
+                      : Text(
+                          'No payments yet',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 13,
+                          ),
+                        ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (memberBalance != null &&
+                          memberBalance.balance.abs() > 0.01)
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '$symbol ${formatAmount(memberBalance.balance.abs())}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: memberBalance.balance > 0
+                                    ? Colors.green
+                                    : Colors.redAccent,
+                              ),
+                            ),
+                            Text(
+                              memberBalance.balance > 0 ? 'gets back' : 'owes',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      Visibility(
+                        visible: member.id != _currentGroup.createdBy,
+                        maintainSize: true,
+                        maintainAnimation: true,
+                        maintainState: true,
+                        child: IconButton(
+                          icon: HugeIcon(
+                            icon: HugeIconsStrokeRounded.removeCircle,
+                            color: Colors.redAccent,
+                            size: 24,
+                          ),
+                          onPressed: () =>
+                              _showRemoveMemberDialog(themeColor, member),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                subtitle: Text(
-                  member.email,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                ),
-                trailing: member.id != _currentGroup.createdBy
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.remove_circle_outline,
-                          color: Colors.redAccent,
-                        ),
-                        onPressed: () =>
-                            _showRemoveMemberDialog(themeColor, member),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              if (index < _members.length - 1)
-                Divider(
-                  height: 1,
-                  indent: 72,
-                  endIndent: 16,
-                  color: Colors.grey[100],
-                ),
-            ],
-          );
-        }),
+              ],
+            );
+          }),
+        ],
       ),
     );
   }
@@ -1860,6 +1970,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   void _showRemoveMemberDialog(Color themeColor, User member) {
+    final balances = computeMemberBalances(_expenses, _allSplits);
+    final memberBalance = balances[member.email.toLowerCase()];
+    final hasUnsettledBalance =
+        memberBalance != null && memberBalance.balance.abs() > 0.01;
+
+    final symbol = _currency != null && _currency!.isNotEmpty
+        ? _currency!.split(' ').first
+        : '\$';
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -1874,70 +1993,303 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 HugeIcon(
-                  icon: HugeIconsStrokeRounded.userRemove01,
+                  icon: hasUnsettledBalance
+                      ? HugeIconsStrokeRounded.alertDiamond
+                      : HugeIconsStrokeRounded.userRemove01,
                   color: themeColor,
                   size: 60,
                   strokeWidth: 2,
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Remove Member?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  hasUnsettledBalance
+                      ? 'Cannot Remove Member'
+                      : 'Remove Member?',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Are you sure you want to remove ${member.name} from this group? They will lose access to the group expenses.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                if (hasUnsettledBalance) ...[
+                  Text(
+                    '${member.name} has an unsettled balance of $symbol ${formatAmount(memberBalance.balance.abs())}.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    memberBalance.balance > 0
+                        ? 'They are owed money by other members. Please settle all debts before removing.'
+                        : 'They owe money to other members. Please settle all debts before removing.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Are you sure you want to remove ${member.name} from this group? They will lose access to the group expenses.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                const SizedBox(height: 24),
+                if (hasUnsettledBalance)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Got it',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (_currentGroup.id != null) {
+                              await DatabaseService.removeMemberFromGroup(
+                                _currentGroup.id!,
+                                member.email,
+                              );
+                              _loadMembers();
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Remove',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSimplifyDebtsDialog(Color themeColor) {
+    final balances = computeMemberBalances(_expenses, _allSplits);
+    final transactions = simplifyDebts(balances);
+
+    final symbol = _currency != null && _currency!.isNotEmpty
+        ? _currency!.split(' ').first
+        : '\$';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey[300]!),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.aiMagic,
+                      color: themeColor,
+                      size: 24,
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (_currentGroup.id != null) {
-                            await DatabaseService.removeMemberFromGroup(
-                              _currentGroup.id!,
-                              member.email,
-                            );
-                            _loadMembers();
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: themeColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Remove',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                    const Text(
+                      'Simplify Debts',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'We simplified the group debts into ${transactions.length} total transactions.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 24),
+                if (transactions.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Column(
+                      children: [
+                        HugeIcon(
+                          icon: HugeIconsStrokeRounded.checkmarkCircle02,
+                          color: Colors.green,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'All settled up!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: transactions.length,
+                      separatorBuilder: (ctx, i) => const Divider(height: 1),
+                      itemBuilder: (ctx, i) {
+                        final tx = transactions[i];
+                        final from = _members
+                            .firstWhere(
+                              (m) =>
+                                  m.email.toLowerCase() ==
+                                  tx.fromEmail.toLowerCase(),
+                              orElse: () => User(
+                                id: 0,
+                                name: tx.fromEmail,
+                                email: tx.fromEmail,
+                                createdAt: DateTime.now(),
+                              ),
+                            )
+                            .name;
+                        final to = _members
+                            .firstWhere(
+                              (m) =>
+                                  m.email.toLowerCase() ==
+                                  tx.toEmail.toLowerCase(),
+                              orElse: () => User(
+                                id: 0,
+                                name: tx.toEmail,
+                                email: tx.toEmail,
+                                createdAt: DateTime.now(),
+                              ),
+                            )
+                            .name;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  from,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: HugeIcon(
+                                  icon: HugeIconsStrokeRounded.arrowRight01,
+                                  size: 16,
+                                  color: Colors.grey[400]!,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  to,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$symbol ${formatAmount(tx.amount)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: themeColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: themeColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Got it',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ],
             ),

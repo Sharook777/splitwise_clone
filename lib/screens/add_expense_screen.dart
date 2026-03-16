@@ -101,7 +101,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           seed: seed,
           mode: 'equal',
         );
-        _splitValues = _splitAmounts;
+        _splitValues = Map.from(_splitAmounts);
       });
     }
     if (_splitType == 'Exact Amount') {
@@ -754,7 +754,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                               children: [
                                                 if (_splitType ==
                                                         'Percentage' ||
-                                                    _splitType == 'Share')
+                                                    _splitType == 'Shares')
                                                   Text(
                                                     '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
                                                     style: TextStyle(

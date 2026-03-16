@@ -345,10 +345,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
           'Group ID: ${group.id}',
           style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
-        trailing: Icon(
-          Icons.arrow_forward_ios_rounded,
+        trailing: HugeIcon(
+          icon: HugeIconsStrokeRounded.arrowRight01,
           size: 16,
-          color: Colors.grey[400],
+          color: Colors.grey[400]!,
         ),
         onTap: () {
           Navigator.push(
