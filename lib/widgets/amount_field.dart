@@ -5,12 +5,14 @@ class AmountField extends StatefulWidget {
   final double value;
   final ValueChanged<double> onChanged;
   final Color themeColor;
+  final bool enabled;
 
   const AmountField({
     super.key,
     required this.value,
     required this.onChanged,
     required this.themeColor,
+    this.enabled = true,
   });
 
   @override
@@ -60,6 +62,7 @@ class _AmountFieldState extends State<AmountField> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
+        enabled: widget.enabled,
         controller: _controller,
         focusNode: _focusNode,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),

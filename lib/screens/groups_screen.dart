@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -10,8 +9,6 @@ import '../services/session_service.dart';
 import '../widgets/add_group_bottom_sheet.dart';
 import '../widgets/shimmer_loading.dart';
 import 'group_detail_screen.dart';
-import 'package:file_picker/file_picker.dart';
-import '../utils/export_helper.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -95,6 +92,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       }
     });
   }
+
   void _showCreateGroupDialog() {
     showModalBottomSheet(
       context: context,
@@ -104,43 +102,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => AddGroupBottomSheet(onGroupAdded: _loadGroups),
     );
-  }
-
-  Future<void> _importGroup() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any, // .dutch might not be recognized as a specific type reliably
-      );
-
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final content = await file.readAsString();
-        
-        final data = await ExportHelper.validateAndParseBackup(content);
-        if (data != null) {
-          await DatabaseService.importGroupData(data);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Group imported successfully!')),
-            );
-            _loadGroups();
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid backup file.')),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error importing group: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to import group.')),
-        );
-      }
-    }
   }
 
   @override
@@ -267,15 +228,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
               ),
             ),
             IconButton(
-              onPressed: _importGroup,
-              icon: HugeIcon(
-                icon: HugeIconsStrokeRounded.fileImport,
-                color: Colors.grey[800]!,
-                size: 24,
-              ),
-              tooltip: 'Import Group',
-            ),
-            IconButton(
               onPressed: _showCreateGroupDialog,
               icon: HugeIcon(
                 icon: HugeIconsStrokeRounded.addSquare,
@@ -391,7 +343,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Text(
-          'Group ID: ${group.id}',
+          group.memberNames.isEmpty
+              ? 'No members'
+              : '${group.memberNames.join(", ")} • Total: ${group.currency?.split(" ").first ?? "\$"}${group.totalSpend.toStringAsFixed(2)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
         trailing: HugeIcon(

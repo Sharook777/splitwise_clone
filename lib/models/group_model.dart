@@ -7,6 +7,8 @@ class Group {
   final DateTime? endDate;
   final double? budget;
   final DateTime createdAt;
+  final List<String> memberNames;
+  final double totalSpend;
 
   Group({
     this.id,
@@ -17,6 +19,8 @@ class Group {
     this.endDate,
     this.budget,
     DateTime? createdAt,
+    this.memberNames = const [],
+    this.totalSpend = 0.0,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -46,6 +50,11 @@ class Group {
           : null,
       budget: map['budget'] != null ? (map['budget'] as num).toDouble() : null,
       createdAt: DateTime.parse(map['created_at'] as String),
+      memberNames: (map['member_names'] as String? ?? '')
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      totalSpend: (map['total_spend'] as num? ?? 0.0).toDouble(),
     );
   }
 }

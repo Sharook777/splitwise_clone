@@ -37,7 +37,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   DateTime? _startDate;
   DateTime? _endDate;
   double? _budget;
-  bool _showInactiveMembers = false;
+  // bool _showInactiveMembers = false;
   List<User> _inactiveMembers = [];
 
   @override
@@ -402,7 +402,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   MaterialPageRoute(
                     builder: (context) => AddExpenseScreen(
                       group: _currentGroup,
-                      members: _members,
+                      activeMembers: _members,
+                      inactiveMembers: _inactiveMembers,
                     ),
                   ),
                 );
@@ -484,7 +485,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                         MaterialPageRoute(
                           builder: (context) => AddExpenseScreen(
                             group: _currentGroup,
-                            members: _members,
+                            activeMembers: _members,
+                            inactiveMembers: _inactiveMembers,
                             existingExpense: expense,
                             existingSplits: splits,
                           ),
@@ -2123,78 +2125,78 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             );
           }),
 
-          if (_inactiveMembers.isNotEmpty) ...[
-            InkWell(
-              onTap: () =>
-                  setState(() => _showInactiveMembers = !_showInactiveMembers),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Removed Members (${_inactiveMembers.length})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    HugeIcon(
-                      icon: !_showInactiveMembers
-                          ? HugeIconsStrokeRounded.arrowDown01
-                          : HugeIconsStrokeRounded.arrowUp01,
-                      color: Colors.grey[500],
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_showInactiveMembers)
-              ..._inactiveMembers.map((member) {
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 0,
-                  ),
-                  leading: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.grey[200],
-                    child: Text(
-                      member.name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ),
-                  title: Text(
-                    member.name,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                  subtitle: Text(
-                    member.email,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                  trailing: SizedBox(
-                    width: 40,
-                    child: IconButton(
-                      icon: HugeIcon(
-                        icon: HugeIconsStrokeRounded.userAdd02,
-                        color: themeColor,
-                        size: 20,
-                      ),
-                      onPressed: () =>
-                          _showRestoreMemberDialog(themeColor, member),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                );
-              }),
-            const SizedBox(height: 10),
-          ],
+          // if (_inactiveMembers.isNotEmpty) ...[
+          //   InkWell(
+          //     onTap: () =>
+          //         setState(() => _showInactiveMembers = !_showInactiveMembers),
+          //     child: Padding(
+          //       padding: const EdgeInsets.symmetric(
+          //         horizontal: 16,
+          //         vertical: 8,
+          //       ),
+          //       child: Row(
+          //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //         children: [
+          //           Text(
+          //             'Removed Members (${_inactiveMembers.length})',
+          //             style: TextStyle(
+          //               fontSize: 12,
+          //               fontWeight: FontWeight.bold,
+          //               color: Colors.grey[500],
+          //               letterSpacing: 0.5,
+          //             ),
+          //           ),
+          //           HugeIcon(
+          //             icon: !_showInactiveMembers
+          //                 ? HugeIconsStrokeRounded.arrowDown01
+          //                 : HugeIconsStrokeRounded.arrowUp01,
+          //             color: Colors.grey[500],
+          //             size: 20,
+          //           ),
+          //         ],
+          //       ),
+          //     ),
+          //   ),
+          //   if (_showInactiveMembers)
+          //     ..._inactiveMembers.map((member) {
+          //       return ListTile(
+          //         contentPadding: const EdgeInsets.symmetric(
+          //           horizontal: 8,
+          //           vertical: 0,
+          //         ),
+          //         leading: CircleAvatar(
+          //           radius: 16,
+          //           backgroundColor: Colors.grey[200],
+          //           child: Text(
+          //             member.name[0].toUpperCase(),
+          //             style: const TextStyle(color: Colors.grey, fontSize: 12),
+          //           ),
+          //         ),
+          //         title: Text(
+          //           member.name,
+          //           style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          //         ),
+          //         subtitle: Text(
+          //           member.email,
+          //           style: TextStyle(color: Colors.grey[500], fontSize: 12),
+          //         ),
+          //         trailing: SizedBox(
+          //           width: 40,
+          //           child: IconButton(
+          //             icon: HugeIcon(
+          //               icon: HugeIconsStrokeRounded.userAdd02,
+          //               color: themeColor,
+          //               size: 20,
+          //             ),
+          //             onPressed: () =>
+          //                 _showRestoreMemberDialog(themeColor, member),
+          //             visualDensity: VisualDensity.compact,
+          //           ),
+          //         ),
+          //       );
+          //     }),
+          //   const SizedBox(height: 10),
+          // ],
         ],
       ),
     );
@@ -2330,9 +2332,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   void _showRemoveMemberDialog(Color themeColor, User member) {
     final balances = computeMemberBalances(_expenses, _allSplits);
-    final memberBalance = balances[member.email.toLowerCase()];
+    final memberEmail = member.email.toLowerCase();
+    final memberBalance = balances[memberEmail];
     final hasUnsettledBalance =
         memberBalance != null && memberBalance.balance.abs() > 0.01;
+
+    final hasTransactions =
+        _expenses.any((e) => e.paidByEmail.toLowerCase() == memberEmail) ||
+        _allSplits.any((s) => s.userEmail.toLowerCase() == memberEmail);
 
     final symbol = _currency != null && _currency!.isNotEmpty
         ? _currency!.split(' ').first
@@ -2357,18 +2364,18 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   HugeIcon(
-                    icon: hasUnsettledBalance
+                    icon: hasUnsettledBalance || hasTransactions
                         ? HugeIconsStrokeRounded.alertDiamond
-                        : HugeIconsStrokeRounded.userRemove01,
+                        : HugeIconsStrokeRounded.delete02,
                     color: themeColor,
-                    size: 60,
+                    size: 50,
                     strokeWidth: 2,
                   ),
                   const SizedBox(height: 20),
                   Text(
                     hasUnsettledBalance
                         ? 'Cannot Remove Member'
-                        : 'Remove Member?',
+                        : 'Delete Member?',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -2384,8 +2391,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     const SizedBox(height: 8),
                     Text(
                       memberBalance.balance > 0
-                          ? 'They are owed money by other members. Please settle all debts before removing.'
-                          : 'They owe money to other members. Please settle all debts before removing.',
+                          ? 'They are owed money by other members. Please settle all debts.'
+                          : 'They owe money to other members. Please settle all debts.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -2393,14 +2400,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                  ] else
+                  ] else if (hasTransactions)
                     Text(
-                      'Are you sure you want to remove ${member.name} from this group? They will lose access to the group expenses.',
+                      '${member.name} has transaction history. You can not remove them from the group.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    )
+                  else
+                    Text(
+                      '${member.name} hasn\'t participated in any expenses. They will be removed from the group.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   const SizedBox(height: 24),
-                  if (hasUnsettledBalance)
+                  if (hasUnsettledBalance || hasTransactions)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -2444,10 +2457,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           child: ElevatedButton(
                             onPressed: () async {
                               if (_currentGroup.id != null) {
-                                await DatabaseService.removeMemberFromGroup(
-                                  _currentGroup.id!,
-                                  member.email,
-                                );
+                                if (hasTransactions) {
+                                  await DatabaseService.removeMemberFromGroup(
+                                    _currentGroup.id!,
+                                    member.email,
+                                  );
+                                } else {
+                                  await DatabaseService.hardDeleteMemberFromGroup(
+                                    _currentGroup.id!,
+                                    member.email,
+                                  );
+                                }
                                 _loadMembers();
                                 if (ctx.mounted) Navigator.pop(ctx);
                               }
@@ -2461,9 +2481,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              'Remove',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            child: Text(
+                              'Delete',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -2490,6 +2512,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),

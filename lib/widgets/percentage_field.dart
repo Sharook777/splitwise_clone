@@ -5,12 +5,14 @@ class PercentageField extends StatefulWidget {
   final double value;
   final ValueChanged<double> onChanged;
   final Color themeColor;
+  final bool enabled;
 
   const PercentageField({
     super.key,
     required this.value,
     required this.onChanged,
     required this.themeColor,
+    this.enabled = true,
   });
 
   @override
@@ -60,6 +62,7 @@ class _PercentageFieldState extends State<PercentageField> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
+        enabled: widget.enabled,
         controller: _controller,
         focusNode: _focusNode,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -71,7 +74,6 @@ class _PercentageFieldState extends State<PercentageField> {
           isDense: true,
           hintText: '0',
           hintStyle: TextStyle(color: Colors.grey[400]),
-
           suffixText: '%',
           suffixStyle: TextStyle(
             fontSize: 14,

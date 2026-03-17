@@ -14,14 +14,16 @@ import '../widgets/percentage_field.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Group group;
-  final List<User> members;
+  final List<User> activeMembers;
+  final List<User> inactiveMembers;
   final Expense? existingExpense;
   final List<ExpenseSplit>? existingSplits;
 
   const AddExpenseScreen({
     super.key,
     required this.group,
-    required this.members,
+    required this.activeMembers,
+    required this.inactiveMembers,
     this.existingExpense,
     this.existingSplits,
   });
@@ -42,6 +44,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Map<String, double> _splitAmounts = {};
   List<User> _selectedSplitMembers = [];
   List<User> _sortedMembers = [];
+  Set<String> _inactiveEmails = {};
+  Map<String, User> _allLookupMembers = {};
 
   int seed = DateTime.now().millisecondsSinceEpoch;
 
@@ -49,7 +53,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void initState() {
     super.initState();
     _selectedSplitMembers = [];
-    _sortedMembers = List.from(widget.members);
+    _inactiveEmails = widget.inactiveMembers
+        .map((m) => m.email.toLowerCase())
+        .toSet();
+    _allLookupMembers = {
+      ...{for (var m in widget.activeMembers) m.email.toLowerCase(): m},
+      ...{for (var m in widget.inactiveMembers) m.email.toLowerCase(): m},
+    };
+    _sortedMembers = List.from(widget.activeMembers);
+
     _loadCurrentUser();
 
     _amountController.addListener(_onAmountChanged);
@@ -60,34 +72,45 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _selectedDate = widget.existingExpense!.date;
       _splitType = widget.existingExpense!.splitType;
 
-      _paidBy = widget.members.firstWhere(
-        (m) =>
-            m.email.toLowerCase() ==
-            widget.existingExpense!.paidByEmail.toLowerCase(),
-        orElse: () => widget.members.first,
-      );
+      _paidBy =
+          _allLookupMembers[widget.existingExpense!.paidByEmail
+              .toLowerCase()] ??
+          widget.activeMembers.first;
+
+      // Ensure the payer is in _sortedMembers even if inactive
+      if (_paidBy != null &&
+          _inactiveEmails.contains(_paidBy!.email.toLowerCase()) &&
+          !_sortedMembers.any((m) => m.email == _paidBy!.email)) {
+        _sortedMembers.add(_paidBy!);
+      }
 
       if (widget.existingSplits != null) {
         for (var split in widget.existingSplits!) {
-          final member = widget.members.firstWhere(
-            (m) => m.email.toLowerCase() == split.userEmail.toLowerCase(),
-            orElse: () => User(
-              id: 0,
-              name: split.userEmail,
-              email: split.userEmail,
-              createdAt: DateTime.now(),
-            ),
-          );
+          final member =
+              _allLookupMembers[split.userEmail.toLowerCase()] ??
+              User(
+                id: 0,
+                name: split.userEmail,
+                email: split.userEmail,
+                createdAt: DateTime.now(),
+              );
+
           if (member.id != 0) {
             _selectedSplitMembers.add(member);
             _splitValues[member.email] = split.splitValue ?? split.amount;
             _splitAmounts[member.email] = split.amount;
+
+            // If an inactive member is in a split, add to sorted members to show them
+            if (_inactiveEmails.contains(member.email.toLowerCase()) &&
+                !_sortedMembers.any((m) => m.email == member.email)) {
+              _sortedMembers.add(member);
+            }
           }
         }
       }
     } else {
       // Initialize default split values for new expense
-      for (var m in widget.members) {
+      for (var m in widget.activeMembers) {
         if (_splitType == 'Shares') {
           _splitValues[m.email] = 1.0;
         } else {
@@ -177,9 +200,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (_currentUserEmail != null) {
       setState(() {
         if (widget.existingExpense == null) {
-          _paidBy = widget.members.firstWhere(
+          _paidBy = widget.activeMembers.firstWhere(
             (m) => m.email.toLowerCase() == _currentUserEmail?.toLowerCase(),
-            orElse: () => widget.members.first,
+            orElse: () => widget.activeMembers.first,
           );
         }
 
@@ -697,141 +720,197 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               );
                               return GestureDetector(
                                 onTap: () {
+                                  bool isInactive = _inactiveEmails.contains(
+                                    member.email.toLowerCase(),
+                                  );
                                   setState(() {
                                     if (isSelected) {
                                       _selectedSplitMembers.removeWhere(
                                         (m) => m.email == member.email,
                                       );
-                                    } else {
+                                    } else if (!isInactive) {
                                       _selectedSplitMembers.add(member);
                                     }
-                                    _splitValues[member.email] = 0;
-                                    _onAmountChanged();
+                                    if (!isInactive) {
+                                      _splitValues[member.email] = 0;
+                                      _onAmountChanged();
+                                    }
                                   });
                                 },
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 15),
-                                  padding: const EdgeInsets.all(15),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? themeColor.withOpacity(0.05)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
+                                child: Opacity(
+                                  opacity:
+                                      _inactiveEmails.contains(
+                                            member.email.toLowerCase(),
+                                          ) &&
+                                          !isSelected
+                                      ? 0.5
+                                      : 1.0,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 15),
+                                    padding: const EdgeInsets.all(15),
+                                    decoration: BoxDecoration(
                                       color: isSelected
-                                          ? themeColor
-                                          : Colors.transparent,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      HugeIcon(
-                                        icon: isSelected
-                                            ? HugeIconsStrokeRounded
-                                                  .checkmarkCircle02
-                                            : HugeIconsStrokeRounded.circle,
+                                          ? themeColor.withOpacity(0.05)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
                                         color: isSelected
                                             ? themeColor
-                                            : Colors.grey[300]!,
-                                        size: 24,
+                                            : Colors.transparent,
+                                        width: 1.5,
                                       ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            HugeIcon(
+                                              icon: isSelected
+                                                  ? HugeIconsStrokeRounded
+                                                        .checkmarkCircle02
+                                                  : HugeIconsStrokeRounded
+                                                        .circle,
+                                              color: isSelected
+                                                  ? themeColor
+                                                  : Colors.grey[300]!,
+                                              size: 24,
+                                            ),
 
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              isMe ? 'Me' : member.name,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                                color: isSelected
-                                                    ? themeColor
-                                                    : Colors.black87,
-                                              ),
-                                            ),
-                                            Text(
-                                              member.email,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.normal,
-                                                fontSize: 12,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (isSelected && _splitType == 'Equally')
-                                        Text(
-                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
-                                          style: TextStyle(
-                                            color: themeColor,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      if (_splitType != 'Equally' && isSelected)
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                if (_splitType ==
-                                                        'Percentage' ||
-                                                    _splitType == 'Shares')
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
                                                   Text(
-                                                    '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
+                                                    (isMe ? 'Me' : member.name),
                                                     style: TextStyle(
-                                                      color: themeColor,
-                                                      fontSize: 12,
                                                       fontWeight:
-                                                          FontWeight.w500,
+                                                          FontWeight.bold,
+                                                      fontSize: 15,
+                                                      color: isSelected
+                                                          ? themeColor
+                                                          : Colors.black87,
                                                     ),
                                                   ),
-                                                const SizedBox(width: 4),
-                                                if (_splitType ==
-                                                    'Exact Amount')
-                                                  AmountField(
-                                                    value:
-                                                        _splitValues[member
-                                                            .email] ??
-                                                        0,
-                                                    onChanged: (value) {
-                                                      setState(() {
-                                                        _splitValues[member
-                                                                .email] =
-                                                            value;
-                                                      });
-                                                      _onAmountChanged();
-                                                    },
-                                                    themeColor: themeColor,
+                                                  Text(
+                                                    member.email,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.normal,
+                                                      fontSize: 12,
+                                                      color: Colors.black87,
+                                                    ),
                                                   ),
-                                                if (_splitType == 'Percentage')
-                                                  PercentageField(
-                                                    value:
-                                                        _splitValues[member
-                                                            .email] ??
-                                                        0,
-                                                    themeColor: themeColor,
-                                                    onChanged: (val) {
-                                                      setState(() {
-                                                        _splitValues[member
-                                                                .email] =
-                                                            val;
-                                                      });
-
-                                                      _onAmountChanged();
-                                                    },
-                                                  ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
+                                            if (isSelected &&
+                                                _splitType == 'Equally')
+                                              Text(
+                                                '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
+                                                style: TextStyle(
+                                                  color: themeColor,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            if (_splitType != 'Equally' &&
+                                                isSelected)
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      if (_splitType ==
+                                                              'Percentage' ||
+                                                          _splitType ==
+                                                              'Shares')
+                                                        Text(
+                                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
+                                                          style: TextStyle(
+                                                            color: themeColor,
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      const SizedBox(width: 4),
+                                                      if (_splitType ==
+                                                          'Exact Amount')
+                                                        AmountField(
+                                                          enabled: !_inactiveEmails
+                                                              .contains(
+                                                                member.email
+                                                                    .toLowerCase(),
+                                                              ),
+                                                          value:
+                                                              _splitValues[member
+                                                                  .email] ??
+                                                              0,
+                                                          onChanged: (value) {
+                                                            setState(() {
+                                                              _splitValues[member
+                                                                      .email] =
+                                                                  value;
+                                                            });
+                                                            _onAmountChanged();
+                                                          },
+                                                          themeColor:
+                                                              themeColor,
+                                                        ),
+                                                      if (_splitType ==
+                                                          'Percentage')
+                                                        PercentageField(
+                                                          enabled: !_inactiveEmails
+                                                              .contains(
+                                                                member.email
+                                                                    .toLowerCase(),
+                                                              ),
+                                                          value:
+                                                              _splitValues[member
+                                                                  .email] ??
+                                                              0,
+                                                          themeColor:
+                                                              themeColor,
+                                                          onChanged: (val) {
+                                                            setState(() {
+                                                              _splitValues[member
+                                                                      .email] =
+                                                                  val;
+                                                            });
+
+                                                            _onAmountChanged();
+                                                          },
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
                                           ],
                                         ),
-                                    ],
+                                        if (_inactiveEmails.contains(
+                                              member.email.toLowerCase(),
+                                            ) &&
+                                            isSelected)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                              left: 40,
+                                            ),
+                                            child: Text(
+                                              'Inactive member - cannot edit split',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.redAccent,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -1033,7 +1112,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isMe ? 'Me' : member.name,
+                                (isMe ? 'Me' : member.name) +
+                                    (_inactiveEmails.contains(
+                                          member.email.toLowerCase(),
+                                        )
+                                        ? ' (Removed)'
+                                        : ''),
                                 style: TextStyle(
                                   fontWeight: isSelected
                                       ? FontWeight.bold
@@ -1173,7 +1257,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           setState(() {
             _splitType = type;
             // Reset split values based on type
-            for (var m in widget.members) {
+            for (var m in widget.activeMembers) {
               _splitValues[m.email] = (type == 'Shares' ? 1.0 : 0.0);
             }
           });

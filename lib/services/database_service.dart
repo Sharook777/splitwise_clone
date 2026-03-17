@@ -287,6 +287,16 @@ class DatabaseService {
     );
   }
 
+  /// Permanently remove a member from a group (hard delete)
+  static Future<int> hardDeleteMemberFromGroup(int groupId, String email) async {
+    final db = await database;
+    return await db.delete(
+      'group_members',
+      where: 'group_id = ? AND LOWER(user_email) = ?',
+      whereArgs: [groupId, email.toLowerCase()],
+    );
+  }
+
   static Future<int> restoreMemberToGroup(int groupId, String email) async {
     final db = await database;
     return await db.update(
@@ -302,7 +312,14 @@ class DatabaseService {
     final db = await database;
     final results = await db.rawQuery(
       '''
-      SELECT g.* FROM groups g
+      SELECT 
+        g.*,
+        (SELECT GROUP_CONCAT(u.name) FROM group_members gm2 
+         JOIN users u ON LOWER(gm2.user_email) = LOWER(u.email) 
+         WHERE gm2.group_id = g.id AND gm2.is_active = 1) as member_names,
+        (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e 
+         WHERE e.group_id = g.id AND e.is_settlement = 0) as total_spend
+      FROM groups g
       INNER JOIN group_members gm ON g.id = gm.group_id
       WHERE LOWER(gm.user_email) = ?
     ''',
@@ -317,7 +334,14 @@ class DatabaseService {
     final db = await database;
     final results = await db.rawQuery(
       '''
-      SELECT g.* FROM groups g
+      SELECT 
+        g.*,
+        (SELECT GROUP_CONCAT(u.name) FROM group_members gm2 
+         JOIN users u ON LOWER(gm2.user_email) = LOWER(u.email) 
+         WHERE gm2.group_id = g.id AND gm2.is_active = 1) as member_names,
+        (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e 
+         WHERE e.group_id = g.id AND e.is_settlement = 0) as total_spend
+      FROM groups g
       INNER JOIN group_members gm ON g.id = gm.group_id
       WHERE LOWER(gm.user_email) = ? AND LOWER(g.name) LIKE ?
     ''',

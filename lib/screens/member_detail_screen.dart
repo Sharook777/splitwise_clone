@@ -7,7 +7,6 @@ import '../models/expense_model.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
-import '../services/session_service.dart';
 import '../utils/debt_engine.dart';
 import '../utils/split_engine.dart';
 
@@ -35,22 +34,11 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   late List<Expense> _paidExpenses;
   late List<Expense> _borrowedExpenses;
   late MemberBalance _balance;
-  String? _currentUserEmail;
 
   @override
   void initState() {
     super.initState();
-    _loadSession();
     _computeData();
-  }
-
-  Future<void> _loadSession() async {
-    final email = await SessionService.getUserEmail();
-    if (mounted) {
-      setState(() {
-        _currentUserEmail = email;
-      });
-    }
   }
 
   void _computeData() {
@@ -71,6 +59,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         .where((e) => borrowedExpenseIds.contains(e.id))
         .toList();
 
+    // Total spent
+    _totalSpent = _paidExpenses.fold(0.0, (sum, e) => sum + e.amount);
+
     // Balance
     final balances = computeMemberBalances(
       widget.allExpenses,
@@ -79,6 +70,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     _balance = balances[email] ?? MemberBalance(email: email);
   }
 
+  double _totalSpent = 0;
+
   String _getCurrencySymbol() {
     if (widget.group.currency != null && widget.group.currency!.isNotEmpty) {
       return widget.group.currency!.split(' ').first;
@@ -86,10 +79,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     return '\$';
   }
 
-  bool get _isCurrentUser =>
-      _currentUserEmail?.toLowerCase() == widget.member.email.toLowerCase();
-
-  String get _displayName => _isCurrentUser ? 'You' : widget.member.name;
+  String get _displayName => widget.member.name;
 
   @override
   Widget build(BuildContext context) {
@@ -124,8 +114,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -135,7 +125,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                             widget.member.name[0].toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 24,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -160,38 +150,91 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                           height: 1,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      if (balance.abs() < 0.01)
-                        Text(
-                          'All settled',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 18,
-                            height: 1,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(height: 16),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          // Balance Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                HugeIcon(
+                                  icon: balance.abs() < 0.01
+                                      ? HugeIconsStrokeRounded.checkmarkCircle02
+                                      : (balance >= 0
+                                            ? HugeIconsStrokeRounded.arrowUp02
+                                            : HugeIconsStrokeRounded
+                                                  .arrowDown02),
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  balance.abs() < 0.01
+                                      ? 'Settled'
+                                      : '$symbol${formatAmount(balance.abs())} ${balance >= 0 ? "back" : "owes"}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        )
-                      else
-                        Text(
-                          (balance >= 0 ? 'Gets back' : 'Owes'),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            height: 1,
+                          // Total Spent Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.wallet03,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Spent: $symbol${formatAmount(_totalSpent)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      const SizedBox(height: 4),
+                        ],
+                      ),
                       if (balance.abs() > 0.01) ...[
-                        Text(
-                          '$symbol ${formatAmount(balance.abs())}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
                         SizedBox(
                           width: 150,
                           child: ElevatedButton(
@@ -234,41 +277,16 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 50,
-                  right: 20,
-                  child: Visibility(
-                    visible:
-                        widget.member.id != widget.group.createdBy &&
-                        !_isCurrentUser,
-                    child: GestureDetector(
-                      onTap: () => _showRemoveMemberDialog(themeColor),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const HugeIcon(
-                          icon: HugeIconsStrokeRounded.userRemove01,
-                          color: Colors.redAccent,
-                          size: 24,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
 
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 100),
                 children: [
-                  _buildSectionTitle('Payments $_displayName made'),
+                  _buildSectionTitle('Payments $_displayName done'),
                   if (_paidExpenses.isEmpty)
-                    _buildEmptyState('No payments made yet')
+                    _buildEmptyState('No payments done yet')
                   else
                     _buildExpenseList(
                       _paidExpenses,
@@ -277,7 +295,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                       isPaid: true,
                     ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
                   _buildSectionTitle('Expenses $_displayName borrowed'),
                   if (_borrowedExpenses.isEmpty)
@@ -341,7 +359,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: List.generate(expenses.length, (index) {
@@ -366,17 +384,15 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             children: [
               ListTile(
                 onTap: () {
-                  if (expense.isSettlement) {
-                    _showSettlementDetailsDialog(expense, themeColor);
-                  }
+                  _showSettlementDetailsDialog(expense, themeColor);
                 },
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 14,
+                  vertical: 2,
                 ),
                 leading: Container(
-                  width: 48,
-                  height: 48,
+                  width: 45,
+                  height: 45,
                   decoration: BoxDecoration(
                     color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -395,7 +411,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   expense.description,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 15,
+                    height: 1.2,
                   ),
                 ),
                 subtitle: Text(
@@ -443,13 +460,14 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,23 +476,50 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
+                  margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const Text(
-                'Settle Up',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Settle Up',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Record a payment to settle the balance.',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: HugeIcon(
+                      icon: HugeIconsStrokeRounded.cancel01,
+                      color: Colors.grey[400]!,
+                      size: 24,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Record a payment to settle the balance.',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 10),
               Flexible(
                 child: ListView.builder(
                   shrinkWrap: true,
@@ -501,27 +546,19 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                       ),
                     );
 
-                    final fromName =
-                        fromMember.email.toLowerCase() ==
-                            _currentUserEmail?.toLowerCase()
-                        ? 'You'
-                        : fromMember.name;
-                    final toName =
-                        toMember.email.toLowerCase() ==
-                            _currentUserEmail?.toLowerCase()
-                        ? 'You'
-                        : toMember.name;
+                    final fromName = fromMember.name;
+                    final toName = toMember.name;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8F8),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                          horizontal: 14,
+                          vertical: 4,
                         ),
                         title: Text(
                           '$fromName → $toName',
@@ -545,7 +582,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                             size: 18,
                             strokeWidth: 2,
                           ),
-                          label: const Text('Settle'),
+                          label: const Text('Settle Up'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: themeColor,
                             foregroundColor: Colors.white,
@@ -619,93 +656,105 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: themeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIconsStrokeRounded.agreement02,
-                      color: themeColor,
-                      size: 32,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: themeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIconsStrokeRounded.agreement02,
+                        color: themeColor,
+                        size: 25,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Settlement Details',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Expense',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  child: Column(
-                    children: [
-                      _buildDetailRow('Description', expense.description),
-                      const Divider(height: 24),
-                      _buildDetailRow(
-                        'Amount',
-                        '$symbol ${formatAmount(expense.amount)}',
-                        valueColor: themeColor,
-                      ),
-                      const Divider(height: 24),
-                      _buildDetailRow(
-                        'Date',
-                        DateFormat('dd MMM yyyy, hh:mm a').format(expense.date),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: themeColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    expense.isSettlement
+                        ? 'Settled'
+                        : (expense.paidByEmail.toLowerCase() ==
+                                  widget.member.email.toLowerCase()
+                              ? '$_displayName paid'
+                              : '$_displayName borrowed from ${widget.allMembers.firstWhere(
+                                  (m) => m.email.toLowerCase() == expense.paidByEmail.toLowerCase(),
+                                  orElse: () => User(name: "Someone", email: "", id: 0),
+                                ).name}'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.grey,
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _confirmDeleteSettlement(expense, themeColor);
-                  },
-                  child: const Text(
-                    'Delete Settlement',
-                    style: TextStyle(color: Colors.redAccent),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildDetailRow('Description', expense.description),
+                        SizedBox(height: 10),
+                        _buildDetailRow(
+                          'Amount',
+                          '$symbol ${formatAmount(expense.amount)}',
+                          valueColor: themeColor,
+                        ),
+                        SizedBox(height: 10),
+                        _buildDetailRow(
+                          'Date',
+                          DateFormat('dd MMM yyyy').format(expense.date),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -732,214 +781,6 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _confirmDeleteSettlement(Expense expense, Color themeColor) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HugeIcon(
-                  icon: HugeIconsStrokeRounded.alertDiamond,
-                  color: themeColor,
-                  size: 60,
-                  strokeWidth: 2,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Delete Settlement?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'This will permanently delete this settlement record. This action cannot be undone.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey[300]!),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (expense.id != null) {
-                            await DatabaseService.deleteExpense(expense.id!);
-                            if (mounted) {
-                              Navigator.pop(ctx); // Close dialog
-                              Navigator.pop(
-                                context,
-                                true,
-                              ); // Close screen & refresh
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: themeColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Delete',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showRemoveMemberDialog(Color themeColor) {
-    final symbol = _getCurrencySymbol();
-    final hasUnsettledBalance = _balance.balance.abs() > 0.01;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HugeIcon(
-                  icon: hasUnsettledBalance
-                      ? HugeIconsStrokeRounded.alertDiamond
-                      : HugeIconsStrokeRounded.userRemove01,
-                  color: themeColor,
-                  size: 60,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  hasUnsettledBalance
-                      ? 'Cannot Remove'
-                      : 'Remove ${widget.member.name}?',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  hasUnsettledBalance
-                      ? '${widget.member.name} has an unsettled balance of $symbol ${formatAmount(_balance.balance.abs())}. Please settle up first.'
-                      : 'This member will no longer be active in the group, but their expense history will be preserved.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-                const SizedBox(height: 24),
-                if (hasUnsettledBalance)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: const Text('Got it'),
-                    ),
-                  )
-                else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await DatabaseService.removeMemberFromGroup(
-                              widget.group.id!,
-                              widget.member.email,
-                            );
-                            if (mounted) {
-                              Navigator.pop(ctx);
-                              if (context.mounted) {
-                                Navigator.pop(
-                                  context,
-                                  true,
-                                ); // Go back to group detail and signal refresh
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: themeColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Remove',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
