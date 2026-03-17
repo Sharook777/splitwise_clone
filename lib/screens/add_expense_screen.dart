@@ -59,9 +59,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _amountController.text = formatAmount(widget.existingExpense!.amount);
       _selectedDate = widget.existingExpense!.date;
       _splitType = widget.existingExpense!.splitType;
-      
+
       _paidBy = widget.members.firstWhere(
-        (m) => m.email.toLowerCase() == widget.existingExpense!.paidByEmail.toLowerCase(),
+        (m) =>
+            m.email.toLowerCase() ==
+            widget.existingExpense!.paidByEmail.toLowerCase(),
         orElse: () => widget.members.first,
       );
 
@@ -69,7 +71,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         for (var split in widget.existingSplits!) {
           final member = widget.members.firstWhere(
             (m) => m.email.toLowerCase() == split.userEmail.toLowerCase(),
-            orElse: () => User(id: 0, name: split.userEmail, email: split.userEmail, createdAt: DateTime.now())
+            orElse: () => User(
+              id: 0,
+              name: split.userEmail,
+              email: split.userEmail,
+              createdAt: DateTime.now(),
+            ),
           );
           if (member.id != 0) {
             _selectedSplitMembers.add(member);
@@ -306,9 +313,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       } else {
         await DatabaseService.insertExpense(expense, splits);
       }
-      
+
       if (mounted) {
-        Navigator.pop(context, true); // Return true to indicate it was added/updated
+        Navigator.pop(
+          context,
+          true,
+        ); // Return true to indicate it was added/updated
       }
     } catch (e) {
       _showErrorSnackBar('Failed to save expense: $e');
@@ -356,7 +366,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           onTap: () => Navigator.pop(context),
                         ),
                         Text(
-                          widget.existingExpense != null ? 'Edit Expense' : 'Add Expense',
+                          widget.existingExpense != null
+                              ? 'Edit Expense'
+                              : 'Add Expense',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -627,6 +639,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                           ) ??
                                           0,
                                       memberCount: _selectedSplitMembers.length,
+                                      currency:
+                                          (widget.group.currency != null &&
+                                              widget.group.currency!.isNotEmpty)
+                                          ? widget.group.currency!
+                                                .split(' ')
+                                                .first
+                                          : '\$',
                                     ),
                                     style: TextStyle(
                                       fontSize: 12,
@@ -638,7 +657,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 if (_selectedSplitMembers.isNotEmpty &&
                                     _splitType == 'Exact Amount')
                                   Text(
-                                    sumMapAmount(_splitAmounts),
+                                    sumMapAmount(
+                                      _splitAmounts,
+                                      currency:
+                                          (widget.group.currency != null &&
+                                              widget.group.currency!.isNotEmpty)
+                                          ? widget.group.currency!
+                                                .split(' ')
+                                                .first
+                                          : '\$',
+                                    ),
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,

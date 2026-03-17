@@ -72,7 +72,11 @@ Map<String, double> smartSplit({
   return result.map((k, v) => MapEntry(k, v / 100));
 }
 
-String getSplitHeader({required double total, required int memberCount}) {
+String getSplitHeader({
+  required double total,
+  required int memberCount,
+  String? currency,
+}) {
   if (memberCount == 0) return "";
 
   double exact = total / memberCount;
@@ -81,10 +85,10 @@ String getSplitHeader({required double total, required int memberCount}) {
   int remainder = totalCents % memberCount;
 
   if (remainder == 0) {
-    return "${formatAmount(exact)}/Person";
+    return "${currency ?? ''}${formatAmount(exact)}/Person";
   }
 
-  return "~${formatAmount(exact)}/Person";
+  return "~${currency ?? ''}${formatAmount(exact)}/Person";
 }
 
 String sumMapValues(Map<String, double> data) {
@@ -96,16 +100,16 @@ String sumMapValues(Map<String, double> data) {
   return formatted;
 }
 
-String sumMapAmount(Map<String, double> data) {
+String sumMapAmount(Map<String, double> data, {String? currency}) {
   String values = sumMapValues(data);
 
-  return "Total: $values";
+  return "${currency ?? ''}$values";
 }
 
 String sumMapPercentage(Map<String, double> data) {
   String values = sumMapValues(data);
 
-  return "Percentage: $values%";
+  return "$values%";
 }
 
 String formatAmount(double v) {

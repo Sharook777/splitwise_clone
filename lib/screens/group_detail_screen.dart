@@ -172,15 +172,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       Hero(
                         tag: 'group-icon-${_currentGroup.id}',
                         child: Container(
-                          width: 50,
-                          height: 50,
+                          width: 45,
+                          height: 45,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: const HugeIcon(
                             icon: HugeIconsStrokeRounded.bitcoinBag,
                             color: Colors.white,
-                            size: 25,
+                            size: 22,
                             strokeWidth: 2,
                           ),
                         ),
@@ -190,7 +190,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                         _groupName,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -203,7 +203,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               _currency!.split(' ').first,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -221,7 +221,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                                 formatAmount(totalAmount),
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),
                               );
@@ -235,7 +235,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             '${_members.length} Member${_members.length != 1 ? 's' : ''}',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -578,84 +578,73 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: themeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: HugeIconsStrokeRounded.agreement02,
+                    color: themeColor,
+                    size: 40,
+                    strokeWidth: 2,
                   ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIconsStrokeRounded.agreement02,
+                  const SizedBox(height: 10),
+                  Text(
+                    '$symbol ${formatAmount(expense.amount)}',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
                       color: themeColor,
-                      size: 32,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Settlement',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Settled',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  child: Column(
-                    children: [
-                      _buildDetailRow('Description', expense.description),
-                      const SizedBox(height: 15),
-                      // const Divider(height: 24),
-                      _buildDetailRow(
-                        'Amount',
-                        '$symbol ${formatAmount(expense.amount)}',
-                        valueColor: themeColor,
-                      ),
-                      const SizedBox(height: 15),
-                      // const Divider(height: 24),
-                      _buildDetailRow(
-                        'Date',
-                        DateFormat('dd MMM yyyy, hh:mm a').format(expense.date),
-                      ),
-                    ],
+                  const SizedBox(height: 8),
+                  Text(
+                    expense.description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
-                ),
-                const SizedBox(height: 15),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: themeColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: 130,
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -663,107 +652,92 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: valueColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   void _deleteExpense(Expense expense, Color themeColor) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HugeIcon(
-                  icon: HugeIconsStrokeRounded.alertDiamond,
-                  color: themeColor,
-                  size: 60,
-                  strokeWidth: 2,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Delete Expense?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'This will permanently delete "${expense.description}" and all its split data. This action cannot be undone.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey[300]!),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: HugeIconsStrokeRounded.alertDiamond,
+                    color: themeColor,
+                    size: 60,
+                    strokeWidth: 2,
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Delete Expense?',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This will permanently delete "${expense.description}" and all its split data. This action cannot be undone.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.grey[600]),
                           ),
                         ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (expense.id != null) {
-                            await DatabaseService.deleteExpense(expense.id!);
-                            _loadExpenses();
-                            _refreshGroup();
-                          }
-                          if (ctx.mounted) Navigator.pop(ctx);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: themeColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (expense.id != null) {
+                              await DatabaseService.deleteExpense(expense.id!);
+                              _loadExpenses();
+                              _refreshGroup();
+                            }
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            elevation: 0,
                           ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Delete',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2124,19 +2098,21 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           ],
                         ),
                       const SizedBox(width: 8),
-                      // Only show remove icon for non-creators and active members
-                      Visibility(
-                        visible: member.id != _currentGroup.createdBy,
-                        child: IconButton(
-                          icon: const HugeIcon(
-                            icon: HugeIconsStrokeRounded.removeCircle,
-                            color: Colors.redAccent,
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              _showRemoveMemberDialog(themeColor, member),
-                          visualDensity: VisualDensity.compact,
-                        ),
+                      // Use a fixed width container for alignment
+                      SizedBox(
+                        width: 40,
+                        child: member.id != _currentGroup.createdBy
+                            ? IconButton(
+                                icon: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.removeCircle,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    _showRemoveMemberDialog(themeColor, member),
+                                visualDensity: VisualDensity.compact,
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -2182,7 +2158,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             if (_showInactiveMembers)
               ..._inactiveMembers.map((member) {
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 0,
+                  ),
                   leading: CircleAvatar(
                     radius: 16,
                     backgroundColor: Colors.grey[200],
@@ -2199,20 +2178,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     member.email,
                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
-                  trailing: TextButton.icon(
-                    onPressed: () => _restoreMember(member),
-                    icon: HugeIcon(
-                      icon: HugeIconsStrokeRounded.userAdd02,
-                      color: themeColor,
-                      size: 16,
-                    ),
-                    label: const Text('Add back'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: themeColor,
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                  trailing: SizedBox(
+                    width: 40,
+                    child: IconButton(
+                      icon: HugeIcon(
+                        icon: HugeIconsStrokeRounded.userAdd02,
+                        color: themeColor,
+                        size: 20,
                       ),
+                      onPressed: () =>
+                          _showRestoreMemberDialog(themeColor, member),
+                      visualDensity: VisualDensity.compact,
                     ),
                   ),
                 );
@@ -2232,6 +2208,94 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       );
       _loadMembers();
     }
+  }
+
+  void _showRestoreMemberDialog(Color themeColor, User member) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: HugeIconsStrokeRounded.userAdd02,
+                    color: themeColor,
+                    size: 60,
+                    strokeWidth: 2,
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Add Back Member?',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Are you sure you want to add ${member.name} back to this group? They will regain access to all group expenses.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _restoreMember(member);
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Add Back',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildEmptyActivity(Color themeColor) {
@@ -2282,125 +2346,131 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HugeIcon(
-                  icon: hasUnsettledBalance
-                      ? HugeIconsStrokeRounded.alertDiamond
-                      : HugeIconsStrokeRounded.userRemove01,
-                  color: themeColor,
-                  size: 60,
-                  strokeWidth: 2,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  hasUnsettledBalance
-                      ? 'Cannot Remove Member'
-                      : 'Remove Member?',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: hasUnsettledBalance
+                        ? HugeIconsStrokeRounded.alertDiamond
+                        : HugeIconsStrokeRounded.userRemove01,
+                    color: themeColor,
+                    size: 60,
+                    strokeWidth: 2,
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (hasUnsettledBalance) ...[
+                  const SizedBox(height: 20),
                   Text(
-                    '${member.name} has an unsettled balance of $symbol ${formatAmount(memberBalance.balance.abs())}.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    hasUnsettledBalance
+                        ? 'Cannot Remove Member'
+                        : 'Remove Member?',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    memberBalance.balance > 0
-                        ? 'They are owed money by other members. Please settle all debts before removing.'
-                        : 'They owe money to other members. Please settle all debts before removing.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[500],
-                      fontStyle: FontStyle.italic,
+                  if (hasUnsettledBalance) ...[
+                    Text(
+                      '${member.name} has an unsettled balance of $symbol ${formatAmount(memberBalance.balance.abs())}.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
-                  ),
-                ] else
-                  Text(
-                    'Are you sure you want to remove ${member.name} from this group? They will lose access to the group expenses.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                const SizedBox(height: 24),
-                if (hasUnsettledBalance)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Got it',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(height: 8),
+                    Text(
+                      memberBalance.balance > 0
+                          ? 'They are owed money by other members. Please settle all debts before removing.'
+                          : 'They owe money to other members. Please settle all debts before removing.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
-                  )
-                else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
+                  ] else
+                    Text(
+                      'Are you sure you want to remove ${member.name} from this group? They will lose access to the group expenses.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  const SizedBox(height: 24),
+                  if (hasUnsettledBalance)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: themeColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
                           ),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Got it',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (_currentGroup.id != null) {
-                              await DatabaseService.removeMemberFromGroup(
-                                _currentGroup.id!,
-                                member.email,
-                              );
-                              _loadMembers();
-                              if (ctx.mounted) Navigator.pop(ctx);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: themeColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
                             ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Remove',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-              ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (_currentGroup.id != null) {
+                                await DatabaseService.removeMemberFromGroup(
+                                  _currentGroup.id!,
+                                  member.email,
+                                );
+                                _loadMembers();
+                                if (ctx.mounted) Navigator.pop(ctx);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: themeColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Remove',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         );
