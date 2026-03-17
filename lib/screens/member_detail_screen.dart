@@ -127,7 +127,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Center(
@@ -155,33 +155,42 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                       Text(
                         widget.member.email,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 13,
                           height: 1,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        balance.abs() < 0.01
-                            ? 'All settled'
-                            : (balance >= 0 ? 'Gets back' : 'Owes'),
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                          height: 1,
+                      if (balance.abs() < 0.01)
+                        Text(
+                          'All settled',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 18,
+                            height: 1,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else
+                        Text(
+                          (balance >= 0 ? 'Gets back' : 'Owes'),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            height: 1,
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 4),
-                      Text(
-                        '$symbol ${formatAmount(balance.abs())}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          height: 1,
-                        ),
-                      ),
                       if (balance.abs() > 0.01) ...[
+                        Text(
+                          '$symbol ${formatAmount(balance.abs())}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         SizedBox(
                           width: 150,
@@ -221,6 +230,31 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                         color: Colors.black,
                         size: 24,
                         strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 50,
+                  right: 20,
+                  child: Visibility(
+                    visible:
+                        widget.member.id != widget.group.createdBy &&
+                        !_isCurrentUser,
+                    child: GestureDetector(
+                      onTap: () => _showRemoveMemberDialog(themeColor),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const HugeIcon(
+                          icon: HugeIconsStrokeRounded.userRemove01,
+                          color: Colors.redAccent,
+                          size: 24,
+                          strokeWidth: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -351,7 +385,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     child: HugeIcon(
                       icon: expense.isSettlement
                           ? HugeIconsStrokeRounded.agreement02
-                          : HugeIconsStrokeRounded.invoice01,
+                          : HugeIconsStrokeRounded.invoice03,
                       color: themeColor,
                       size: 24,
                     ),
@@ -684,10 +718,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
         const SizedBox(width: 16),
         Expanded(
           child: Text(
@@ -762,7 +793,10 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                             await DatabaseService.deleteExpense(expense.id!);
                             if (mounted) {
                               Navigator.pop(ctx); // Close dialog
-                              Navigator.pop(context, true); // Close screen & refresh
+                              Navigator.pop(
+                                context,
+                                true,
+                              ); // Close screen & refresh
                             }
                           }
                         },
@@ -783,6 +817,124 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRemoveMemberDialog(Color themeColor) {
+    final symbol = _getCurrencySymbol();
+    final hasUnsettledBalance = _balance.balance.abs() > 0.01;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HugeIcon(
+                  icon: hasUnsettledBalance
+                      ? HugeIconsStrokeRounded.alertDiamond
+                      : HugeIconsStrokeRounded.userRemove01,
+                  color: themeColor,
+                  size: 60,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  hasUnsettledBalance
+                      ? 'Cannot Remove'
+                      : 'Remove ${widget.member.name}?',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  hasUnsettledBalance
+                      ? '${widget.member.name} has an unsettled balance of $symbol ${formatAmount(_balance.balance.abs())}. Please settle up first.'
+                      : 'This member will no longer be active in the group, but their expense history will be preserved.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 24),
+                if (hasUnsettledBalance)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: const Text('Got it'),
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await DatabaseService.removeMemberFromGroup(
+                              widget.group.id!,
+                              widget.member.email,
+                            );
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              if (context.mounted) {
+                                Navigator.pop(
+                                  context,
+                                  true,
+                                ); // Go back to group detail and signal refresh
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Remove',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

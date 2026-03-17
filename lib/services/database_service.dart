@@ -24,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -73,9 +73,9 @@ class DatabaseService {
         if (oldVersion < 6) {
           await db.execute('ALTER TABLE groups ADD COLUMN budget REAL');
         }
-        if (oldVersion < 8) {
+        if (oldVersion < 9) {
           await db.execute(
-            'ALTER TABLE expenses ADD COLUMN is_settlement INTEGER DEFAULT 0',
+            'ALTER TABLE group_members ADD COLUMN is_active INTEGER DEFAULT 1',
           );
         }
       },
@@ -118,6 +118,7 @@ class DatabaseService {
         group_id INTEGER NOT NULL,
         user_email TEXT NOT NULL,
         friend_id INTEGER,
+        is_active INTEGER DEFAULT 1,
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE,
         FOREIGN KEY (friend_id) REFERENCES friends (id),
         UNIQUE(group_id, user_email)
@@ -258,8 +259,19 @@ class DatabaseService {
   /// Remove a member from a group
   static Future<int> removeMemberFromGroup(int groupId, String email) async {
     final db = await database;
-    return await db.delete(
+    return await db.update(
       'group_members',
+      {'is_active': 0},
+      where: 'group_id = ? AND LOWER(user_email) = ?',
+      whereArgs: [groupId, email.toLowerCase()],
+    );
+  }
+
+  static Future<int> restoreMemberToGroup(int groupId, String email) async {
+    final db = await database;
+    return await db.update(
+      'group_members',
+      {'is_active': 1},
       where: 'group_id = ? AND LOWER(user_email) = ?',
       whereArgs: [groupId, email.toLowerCase()],
     );
@@ -296,13 +308,17 @@ class DatabaseService {
   }
 
   /// Get members of a group (returns user records)
-  static Future<List<User>> getGroupMembers(int groupId) async {
+  static Future<List<User>> getGroupMembers(int groupId, {bool includeInactive = false}) async {
     final db = await database;
+    final String whereClause = includeInactive 
+        ? 'gm.group_id = ?' 
+        : 'gm.group_id = ? AND gm.is_active = 1';
+
     final results = await db.rawQuery(
       '''
       SELECT u.* FROM users u
       INNER JOIN group_members gm ON LOWER(u.email) = LOWER(gm.user_email)
-      WHERE gm.group_id = ?
+      WHERE $whereClause
     ''',
       [groupId],
     );
@@ -479,5 +495,67 @@ class DatabaseService {
       [groupId],
     );
     return results.map((map) => ExpenseSplit.fromMap(map)).toList();
+  }
+
+  /// Import a full group from backup data
+  static Future<int> importGroupData(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.transaction((txn) async {
+      // 1. Insert Group
+      final groupData = Map<String, dynamic>.from(data['group']);
+      groupData.remove('id'); // Ensure new ID
+      final groupId = await txn.insert('groups', groupData);
+
+      // 2. Insert Members (Users first)
+      final List<dynamic> activeMembers = data['members'] ?? [];
+      final List<dynamic> inactiveMembers = data['inactive_members'] ?? [];
+      final allBackupMembers = [...activeMembers, ...inactiveMembers];
+
+      for (var mData in allBackupMembers) {
+        final email = mData['email'].toString().toLowerCase();
+        // Check if user exists
+        final existing = await txn.query('users', where: 'LOWER(email) = ?', whereArgs: [email], limit: 1);
+        if (existing.isEmpty) {
+          final userData = {
+            'name': mData['name'],
+            'email': email,
+            'created_at': mData['created_at'] ?? DateTime.now().toIso8601String(),
+          };
+          await txn.insert('users', userData);
+        }
+
+        // Add to group_members
+        final isActive = activeMembers.any((m) => m['email'].toString().toLowerCase() == email) ? 1 : 0;
+        await txn.insert('group_members', {
+          'group_id': groupId,
+          'user_email': email,
+          'is_active': isActive,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+
+      // 3. Insert Expenses & Splits
+      final List<dynamic> expensesData = data['expenses'] ?? [];
+      final List<dynamic> splitsData = data['splits'] ?? [];
+
+      for (var eData in expensesData) {
+        final oldExpenseId = eData['id'];
+        final Map<String, dynamic> expMap = Map<String, dynamic>.from(eData);
+        expMap.remove('id');
+        expMap['group_id'] = groupId;
+        
+        final newExpenseId = await txn.insert('expenses', expMap);
+
+        // Filter and insert splits for this expense
+        final relatedSplits = splitsData.where((s) => s['expense_id'] == oldExpenseId);
+        for (var sData in relatedSplits) {
+          final Map<String, dynamic> splitMap = Map<String, dynamic>.from(sData);
+          splitMap.remove('id');
+          splitMap['expense_id'] = newExpenseId;
+          await txn.insert('expense_splits', splitMap);
+        }
+      }
+
+      return groupId;
+    });
   }
 }

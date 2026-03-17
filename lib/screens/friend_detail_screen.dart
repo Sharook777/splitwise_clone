@@ -178,7 +178,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     HugeIcon(
-                                      icon: HugeIconsStrokeRounded.invoice01,
+                                      icon: HugeIconsStrokeRounded.invoice03,
                                       size: 60,
                                       color: Colors.grey[300]!,
                                     ),

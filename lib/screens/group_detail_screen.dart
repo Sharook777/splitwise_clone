@@ -37,6 +37,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   DateTime? _startDate;
   DateTime? _endDate;
   double? _budget;
+  bool _showInactiveMembers = false;
+  List<User> _inactiveMembers = [];
 
   @override
   void initState() {
@@ -106,12 +108,27 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Future<void> _loadMembers() async {
     try {
       if (_currentGroup.id != null) {
-        final members = await DatabaseService.getGroupMembers(
+        final activeMembers = await DatabaseService.getGroupMembers(
           _currentGroup.id!,
+          includeInactive: false,
         );
+        final inactiveMembers = await DatabaseService.getGroupMembers(
+          _currentGroup.id!,
+          includeInactive: true,
+        );
+
+        // Filter inactive members: those that are in 'all' but not in 'active'
+        final activeEmails = activeMembers
+            .map((m) => m.email.toLowerCase())
+            .toSet();
+        final filteredInactive = inactiveMembers
+            .where((m) => !activeEmails.contains(m.email.toLowerCase()))
+            .toList();
+
         if (mounted) {
           setState(() {
-            _members = members;
+            _members = activeMembers;
+            _inactiveMembers = filteredInactive;
             _isLoadingMembers = false;
           });
         }
@@ -495,7 +512,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     child: HugeIcon(
                       icon: expense.isSettlement
                           ? HugeIconsStrokeRounded.agreement02
-                          : HugeIconsStrokeRounded.invoice01,
+                          : HugeIconsStrokeRounded.invoice03,
                       color: themeColor,
                       size: 24,
                     ),
@@ -563,9 +580,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       builder: (ctx) {
         return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -589,7 +606,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Settlement Details',
+                  'Settlement',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
@@ -602,13 +619,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   child: Column(
                     children: [
                       _buildDetailRow('Description', expense.description),
-                      const Divider(height: 24),
+                      const SizedBox(height: 15),
+                      // const Divider(height: 24),
                       _buildDetailRow(
                         'Amount',
                         '$symbol ${formatAmount(expense.amount)}',
                         valueColor: themeColor,
                       ),
-                      const Divider(height: 24),
+                      const SizedBox(height: 15),
+                      // const Divider(height: 24),
                       _buildDetailRow(
                         'Date',
                         DateFormat('dd MMM yyyy, hh:mm a').format(expense.date),
@@ -616,7 +635,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 15),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -624,9 +643,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: themeColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(25),
                       ),
                       elevation: 0,
                     ),
@@ -634,17 +653,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       'Close',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _deleteExpense(expense, themeColor);
-                  },
-                  child: const Text(
-                    'Delete Settlement',
-                    style: TextStyle(color: Colors.redAccent),
                   ),
                 ),
               ],
@@ -660,10 +668,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
         const SizedBox(width: 16),
         Expanded(
           child: Text(
@@ -882,6 +887,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     );
                   },
                 ),
+                _buildSettingsDivider(),
+                // _buildSettingsTile(
+                //   icon: HugeIconsStrokeRounded.fileDownload,
+                //   title: 'System Backup (.dutch)',
+                //   subtitle: 'Export everything for portability',
+                //   color: themeColor,
+                //   onTap: () async {
+                //     await ExportHelper.backupGroupToSystemFile(
+                //       group: _currentGroup,
+                //       expenses: _expenses,
+                //       allSplits: _allSplits,
+                //       members: _members,
+                //       inactiveMembers: _inactiveMembers,
+                //     );
+                //   },
+                // ),
               ],
             ),
           ),
@@ -2024,6 +2045,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     );
                     if (result == true) {
                       _loadExpenses();
+                      _loadMembers(); // Reload members too in case status changed
                       _refreshGroup();
                     }
                   },
@@ -2101,30 +2123,115 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             ),
                           ],
                         ),
+                      const SizedBox(width: 8),
+                      // Only show remove icon for non-creators and active members
                       Visibility(
                         visible: member.id != _currentGroup.createdBy,
-                        maintainSize: true,
-                        maintainAnimation: true,
-                        maintainState: true,
                         child: IconButton(
-                          icon: HugeIcon(
+                          icon: const HugeIcon(
                             icon: HugeIconsStrokeRounded.removeCircle,
                             color: Colors.redAccent,
-                            size: 24,
+                            size: 20,
                           ),
                           onPressed: () =>
                               _showRemoveMemberDialog(themeColor, member),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ],
                   ),
                 ),
+                if (index < _members.length - 1)
+                  Divider(height: 1, indent: 60, color: Colors.grey[100]),
               ],
             );
           }),
+
+          if (_inactiveMembers.isNotEmpty) ...[
+            InkWell(
+              onTap: () =>
+                  setState(() => _showInactiveMembers = !_showInactiveMembers),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Removed Members (${_inactiveMembers.length})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[500],
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    HugeIcon(
+                      icon: _showInactiveMembers
+                          ? HugeIconsStrokeRounded.arrowDown01
+                          : HugeIconsStrokeRounded.arrowUp01,
+                      color: Colors.grey[500],
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_showInactiveMembers)
+              ..._inactiveMembers.map((member) {
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.grey[200],
+                    child: Text(
+                      member.name[0].toUpperCase(),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ),
+                  title: Text(
+                    member.name,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    member.email,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                  trailing: TextButton.icon(
+                    onPressed: () => _restoreMember(member),
+                    icon: HugeIcon(
+                      icon: HugeIconsStrokeRounded.userAdd02,
+                      color: themeColor,
+                      size: 16,
+                    ),
+                    label: const Text('Add back'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: themeColor,
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            const SizedBox(height: 10),
+          ],
         ],
       ),
     );
+  }
+
+  void _restoreMember(User member) async {
+    if (_currentGroup.id != null) {
+      await DatabaseService.restoreMemberToGroup(
+        _currentGroup.id!,
+        member.email,
+      );
+      _loadMembers();
+    }
   }
 
   Widget _buildEmptyActivity(Color themeColor) {
@@ -2138,7 +2245,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           HugeIcon(
-            icon: HugeIconsStrokeRounded.invoice01,
+            icon: HugeIconsStrokeRounded.invoice03,
             size: 50,
             color: Colors.grey[300]!,
           ),
