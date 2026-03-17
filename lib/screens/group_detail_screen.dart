@@ -159,7 +159,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 60, 16, 30),
+                  padding: const EdgeInsets.fromLTRB(16, 60, 16, 15),
                   decoration: BoxDecoration(
                     color: themeColor,
                     borderRadius: const BorderRadius.only(
@@ -194,48 +194,90 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 1),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      const SizedBox(height: 10),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 10,
                         children: [
-                          if (_currency != null && _currency!.isNotEmpty) ...[
-                            Text(
-                              _currency!.split(' ').first,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                          ],
-
+                          // Total Spend Badge
                           Builder(
                             builder: (_) {
-                              final double totalAmount = _expenses.fold(
-                                0.0,
-                                (sum, e) => sum + e.amount,
-                              );
+                              final double totalAmount = _expenses
+                                  .where((e) => !e.isSettlement)
+                                  .fold(0.0, (sum, e) => sum + e.amount);
+                              final symbol =
+                                  _currency != null && _currency!.isNotEmpty
+                                  ? _currency!.split(' ').first
+                                  : '\$';
 
-                              return Text(
-                                formatAmount(totalAmount),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const HugeIcon(
+                                      icon: HugeIconsStrokeRounded.dollarCircle,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '$symbol${formatAmount(totalAmount)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
                           ),
-                          Text(
-                            ' • ',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          Text(
-                            '${_members.length} Member${_members.length != 1 ? 's' : ''}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 13,
+                          // Member Count Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.userGroup,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_members.length} Member${_members.length != 1 ? 's' : ''}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

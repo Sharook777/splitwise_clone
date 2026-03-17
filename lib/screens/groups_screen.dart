@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:mobile_app/utils/split_engine.dart';
 import '../models/group_model.dart';
 import '../services/database_service.dart';
 import '../services/session_service.dart';
@@ -342,13 +343,32 @@ class _GroupsScreenState extends State<GroupsScreen> {
           group.name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: Text(
-          group.memberNames.isEmpty
-              ? 'No members'
-              : '${group.memberNames.join(", ")} • Total: ${group.currency?.split(" ").first ?? "\$"}${group.totalSpend.toStringAsFixed(2)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        subtitle: Row(
+          children: [
+            HugeIcon(
+              icon: HugeIconsStrokeRounded.userGroup,
+              size: 15,
+              color: themeColor,
+            ),
+            SizedBox(width: 5),
+            Text(
+              '${group.memberNames.length}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+            SizedBox(width: 10),
+            Text('•', style: TextStyle(color: Colors.grey[600], fontSize: 15)),
+            SizedBox(width: 10),
+            HugeIcon(
+              icon: HugeIconsStrokeRounded.dollarCircle,
+              size: 15,
+              color: themeColor,
+            ),
+            SizedBox(width: 5),
+            Text(
+              '${group.currency?.split(" ").first ?? "\$"}${formatAmount(group.totalSpend)}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ],
         ),
         trailing: HugeIcon(
           icon: HugeIconsStrokeRounded.arrowRight01,
