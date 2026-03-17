@@ -1887,7 +1887,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                                         widget.group.id!,
                                       );
                                       if (ctx.mounted) Navigator.pop(ctx);
-                                      if (mounted) Navigator.pop(this.context);
+                                      if (mounted) Navigator.pop(context);
                                     }
                                   }
                                 : null,
@@ -2145,7 +2145,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       ),
                     ),
                     HugeIcon(
-                      icon: _showInactiveMembers
+                      icon: !_showInactiveMembers
                           ? HugeIconsStrokeRounded.arrowDown01
                           : HugeIconsStrokeRounded.arrowUp01,
                       color: Colors.grey[500],

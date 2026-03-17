@@ -247,13 +247,33 @@ class DatabaseService {
     });
   }
 
-  /// Add a member to a group
+  /// Add a member to a group (handles restoration of inactive members)
   static Future<int> addMemberToGroup(int groupId, String email) async {
     final db = await database;
+
+    // Check if the member already exists (including inactive ones)
+    final existing = await db.query(
+      'group_members',
+      where: 'group_id = ? AND LOWER(user_email) = ?',
+      whereArgs: [groupId, email.toLowerCase()],
+    );
+
+    if (existing.isNotEmpty) {
+      // If they exist but are inactive, reactivate them
+      return await db.update(
+        'group_members',
+        {'is_active': 1},
+        where: 'group_id = ? AND LOWER(user_email) = ?',
+        whereArgs: [groupId, email.toLowerCase()],
+      );
+    }
+
+    // Otherwise, insert as new
     return await db.insert('group_members', {
       'group_id': groupId,
       'user_email': email.toLowerCase(),
-    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      'is_active': 1,
+    });
   }
 
   /// Remove a member from a group
