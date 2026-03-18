@@ -394,8 +394,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         balance.abs() < 0.01
                             ? 'Settled'
                             : (isPositive
-                                  ? 'Owed $_currencySymbol${formatAmount(balance)}'
-                                  : 'Owes $_currencySymbol${formatAmount(balance.abs())}'),
+                                  ? 'Gets $_currencySymbol${formatAmount(balance)}'
+                                  : 'Pays $_currencySymbol${formatAmount(balance.abs())}'),
                         style: TextStyle(
                           color: balance.abs() < 0.01
                               ? Colors.grey
@@ -514,7 +514,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Everyone is settled up!',
+                          'Settled up!',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -565,7 +565,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const TextSpan(text: ' owes '),
+                                          const TextSpan(text: ' pays '),
                                           TextSpan(
                                             text: toName,
                                             style: const TextStyle(
@@ -624,7 +624,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
     if (_debts.isEmpty) {
       return _buildEmptyState(
         'No outstanding balances',
-        HugeIconsStrokeRounded.contact,
+        HugeIconsStrokeRounded.user,
       );
     }
 
@@ -678,8 +678,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                           .withValues(alpha: 0.1),
                   child: HugeIcon(
                     icon: isPositive
-                        ? HugeIconsStrokeRounded.arrowUp02
-                        : HugeIconsStrokeRounded.arrowDown02,
+                        ? HugeIconsStrokeRounded.arrowDown02
+                        : HugeIconsStrokeRounded.arrowUp02,
                     color: isPositive
                         ? Colors.green[600]!
                         : Colors.orange[800]!,
@@ -699,8 +699,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         balance.abs() < 0.01
                             ? 'Settled'
                             : (isPositive
-                                  ? 'Owes ${widget.friend.name} $_currencySymbol${formatAmount(balance)}'
-                                  : '${widget.friend.name} owes $_currencySymbol${formatAmount(balance.abs())}'),
+                                  ? 'Pays ${widget.friend.name} $_currencySymbol${formatAmount(balance)}'
+                                  : '${widget.friend.name} pays $_currencySymbol${formatAmount(balance.abs())}'),
                         style: TextStyle(
                           color: balance.abs() < 0.01
                               ? Colors.grey
@@ -833,22 +833,28 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      isOwedToFriend
-                                          ? '$otherName owes'
-                                          : '${widget.friend.name} owes',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      isOwedToFriend
-                                          ? widget.friend.name
-                                          : otherName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          isOwedToFriend
+                                              ? otherName
+                                              : widget.friend.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text('pays'),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          isOwedToFriend
+                                              ? widget.friend.name
+                                              : otherName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

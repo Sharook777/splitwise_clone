@@ -238,7 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'You Collect',
+                                  'You Gets',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 13,
@@ -295,7 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'You Pay',
+                                  'You Pays',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 13,
@@ -547,7 +547,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Text(
-                  isPositive ? 'owes you' : 'you owes',
+                  isPositive ? 'you gets' : 'you pays',
                   style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                 ),
               ],
@@ -659,7 +659,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Everyone is settled up!',
+                            'Settled up!',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -717,7 +717,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                            const TextSpan(text: ' owes '),
+                                            const TextSpan(text: ' pays '),
                                             TextSpan(
                                               text: toName,
                                               style: const TextStyle(
@@ -887,20 +887,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        isOwedToMe
-                                            ? '$otherName owes'
-                                            : 'You owe',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Text(
-                                        isOwedToMe ? 'You' : otherName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            isOwedToMe ? otherName : 'You',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text('pays'),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isOwedToMe ? 'You' : otherName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),

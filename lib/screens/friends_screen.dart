@@ -137,7 +137,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     : (_isSearching ? _searchResults : _friends).isEmpty
                     ? _buildEmptyState(themeColor)
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(15, 10, 15, 100),
                         itemCount: _isSearching
                             ? _searchResults.length
                             : _friends.length,
@@ -450,37 +450,39 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildEmptyState(Color themeColor) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            HugeIcon(
-              icon: _isSearching
-                  ? HugeIconsStrokeRounded.search01
-                  : HugeIconsStrokeRounded.userGroup,
-              size: 80,
-              color: themeColor.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _isSearching ? 'No friends found' : 'No friends added yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              HugeIcon(
+                icon: _isSearching
+                    ? HugeIconsStrokeRounded.search01
+                    : HugeIconsStrokeRounded.userGroup,
+                size: 80,
+                color: themeColor.withValues(alpha: 0.3),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _isSearching
-                  ? 'Try searching for a different name or email.'
-                  : 'Add friends to start splitting expenses!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Colors.grey[500]),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                _isSearching ? 'No friends found' : 'No friends added yet',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _isSearching
+                    ? 'Try searching for a different name or email.'
+                    : 'Add friends to start splitting expenses!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.grey[500]),
+              ),
+            ],
+          ),
         ),
       ),
     );

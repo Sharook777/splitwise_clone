@@ -427,7 +427,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       child: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 100),
             children: [
               if (_isLoadingExpenses)
                 const Padding(
@@ -798,7 +798,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       child: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 100),
             children: [_buildMembersSection(themeColor)],
           ),
           Positioned(

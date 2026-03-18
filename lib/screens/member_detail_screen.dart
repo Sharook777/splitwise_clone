@@ -84,7 +84,6 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
 
   double _totalSpent = 0;
 
-
   String get _displayName => widget.member.name;
 
   @override
@@ -183,9 +182,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                                   icon: balance.abs() < 0.01
                                       ? HugeIconsStrokeRounded.checkmarkCircle02
                                       : (balance >= 0
-                                            ? HugeIconsStrokeRounded.arrowUp02
-                                            : HugeIconsStrokeRounded
-                                                  .arrowDown02),
+                                            ? HugeIconsStrokeRounded.arrowDown02
+                                            : HugeIconsStrokeRounded.arrowUp02),
                                   color: Colors.white,
                                   size: 18,
                                 ),
@@ -193,7 +191,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                                 Text(
                                   balance.abs() < 0.01
                                       ? 'Settled'
-                                      : '$symbol${formatAmount(balance.abs())} ${balance >= 0 ? "back" : "owes"}',
+                                      : '$symbol${formatAmount(balance.abs())} ${balance >= 0 ? "get" : "pay"}',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
@@ -566,12 +564,24 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                           horizontal: 14,
                           vertical: 4,
                         ),
-                        title: Text(
-                          '$fromName → $toName',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
+                        title: Row(
+                          children: [
+                            Text(
+                              fromName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text('pays'),
+                            const SizedBox(width: 4),
+                            Text(
+                              toName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         subtitle: Text(
                           '$_currencySymbol ${formatAmount(tx.amount)}',

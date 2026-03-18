@@ -392,37 +392,39 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   Widget _buildEmptyState(Color themeColor) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            HugeIcon(
-              icon: _isSearching
-                  ? HugeIconsStrokeRounded.search01
-                  : HugeIconsStrokeRounded.userGroup,
-              size: 80,
-              color: themeColor.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _isSearching ? 'No groups found' : 'No groups yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              HugeIcon(
+                icon: _isSearching
+                    ? HugeIconsStrokeRounded.search01
+                    : HugeIconsStrokeRounded.userGroup,
+                size: 80,
+                color: themeColor.withValues(alpha: 0.3),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _isSearching
-                  ? 'Try searching for a different group name.'
-                  : 'Create a group to start splitting expenses with multiple people!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Colors.grey[500]),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                _isSearching ? 'No groups found' : 'No groups yet',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _isSearching
+                    ? 'Try searching for a different group name.'
+                    : 'Create a group to start splitting expenses with multiple people!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.grey[500]),
+              ),
+            ],
+          ),
         ),
       ),
     );

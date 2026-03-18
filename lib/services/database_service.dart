@@ -55,11 +55,10 @@ class DatabaseService {
       )
     ''');
     // Ensure default currency exists
-    await db.insert(
-      'app_config',
-      {'key': 'currency', 'value': '₹ INR'},
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.insert('app_config', {
+      'key': 'currency',
+      'value': '₹ INR',
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
     await db.execute('''
       CREATE TABLE IF NOT EXISTS friends (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,11 +147,10 @@ class DatabaseService {
 
   static Future<void> updateConfig(String key, String value) async {
     final db = await database;
-    await db.insert(
-      'app_config',
-      {'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('app_config', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Insert a user into SQLite
@@ -197,6 +195,7 @@ class DatabaseService {
         '%${query.toLowerCase()}%',
         excludeEmail.toLowerCase(),
       ],
+      orderBy: 'LOWER(name) ASC',
     );
     return maps.map((map) => User.fromMap(map)).toList();
   }
@@ -221,6 +220,7 @@ class DatabaseService {
       SELECT u.* FROM users u
       INNER JOIN friends f ON LOWER(u.email) = LOWER(f.friend_email)
       WHERE LOWER(f.user_email) = ?
+      ORDER BY LOWER(u.name) ASC
     ''',
       [currentUserEmail.toLowerCase()],
     );
@@ -292,7 +292,10 @@ class DatabaseService {
   }
 
   /// Permanently remove a member from a group (hard delete)
-  static Future<int> hardDeleteMemberFromGroup(int groupId, String email) async {
+  static Future<int> hardDeleteMemberFromGroup(
+    int groupId,
+    String email,
+  ) async {
     final db = await database;
     return await db.delete(
       'group_members',
@@ -356,10 +359,13 @@ class DatabaseService {
   }
 
   /// Get members of a group (returns user records)
-  static Future<List<User>> getGroupMembers(int groupId, {bool includeInactive = false}) async {
+  static Future<List<User>> getGroupMembers(
+    int groupId, {
+    bool includeInactive = false,
+  }) async {
     final db = await database;
-    final String whereClause = includeInactive 
-        ? 'gm.group_id = ?' 
+    final String whereClause = includeInactive
+        ? 'gm.group_id = ?'
         : 'gm.group_id = ? AND gm.is_active = 1';
 
     final results = await db.rawQuery(
@@ -551,18 +557,29 @@ class DatabaseService {
       for (var mData in allBackupMembers) {
         final email = mData['email'].toString().toLowerCase();
         // Check if user exists
-        final existing = await txn.query('users', where: 'LOWER(email) = ?', whereArgs: [email], limit: 1);
+        final existing = await txn.query(
+          'users',
+          where: 'LOWER(email) = ?',
+          whereArgs: [email],
+          limit: 1,
+        );
         if (existing.isEmpty) {
           final userData = {
             'name': mData['name'],
             'email': email,
-            'created_at': mData['created_at'] ?? DateTime.now().toIso8601String(),
+            'created_at':
+                mData['created_at'] ?? DateTime.now().toIso8601String(),
           };
           await txn.insert('users', userData);
         }
 
         // Add to group_members
-        final isActive = activeMembers.any((m) => m['email'].toString().toLowerCase() == email) ? 1 : 0;
+        final isActive =
+            activeMembers.any(
+              (m) => m['email'].toString().toLowerCase() == email,
+            )
+            ? 1
+            : 0;
         await txn.insert('group_members', {
           'group_id': groupId,
           'user_email': email,
@@ -579,13 +596,17 @@ class DatabaseService {
         final Map<String, dynamic> expMap = Map<String, dynamic>.from(eData);
         expMap.remove('id');
         expMap['group_id'] = groupId;
-        
+
         final newExpenseId = await txn.insert('expenses', expMap);
 
         // Filter and insert splits for this expense
-        final relatedSplits = splitsData.where((s) => s['expense_id'] == oldExpenseId);
+        final relatedSplits = splitsData.where(
+          (s) => s['expense_id'] == oldExpenseId,
+        );
         for (var sData in relatedSplits) {
-          final Map<String, dynamic> splitMap = Map<String, dynamic>.from(sData);
+          final Map<String, dynamic> splitMap = Map<String, dynamic>.from(
+            sData,
+          );
           splitMap.remove('id');
           splitMap['expense_id'] = newExpenseId;
           await txn.insert('expense_splits', splitMap);
@@ -598,7 +619,9 @@ class DatabaseService {
 
   /// Calculates "To Collect" and "To Pay" for each friend across all their groups.
   /// Result map: friendEmail -> {'toCollect': amount, 'toPay': amount}
-  static Future<Map<String, Map<String, double>>> getFriendsActivity(String userEmail) async {
+  static Future<Map<String, Map<String, double>>> getFriendsActivity(
+    String userEmail,
+  ) async {
     final friends = await getFriends(userEmail);
     final Map<String, Map<String, double>> activity = {};
 
@@ -615,7 +638,7 @@ class DatabaseService {
 
         final expenses = await getGroupExpenses(group.id!);
         final splits = await getAllExpenseSplitsForGroup(group.id!);
-        
+
         final groupBalances = computeMemberBalances(expenses, splits);
 
         // Calculate this friend's net position in this specific group
@@ -623,12 +646,12 @@ class DatabaseService {
         // Or simply calculate their net position in the group:
         final friendBalance = groupBalances[friendEmail];
         if (friendBalance != null) {
-            double netBalance = friendBalance.balance;
-            if (netBalance > 0.01) {
-              totalToCollect += netBalance;
-            } else if (netBalance < -0.01) {
-              totalToPay += netBalance.abs();
-            }
+          double netBalance = friendBalance.balance;
+          if (netBalance > 0.01) {
+            totalToCollect += netBalance;
+          } else if (netBalance < -0.01) {
+            totalToPay += netBalance.abs();
+          }
         }
       }
 
@@ -642,7 +665,9 @@ class DatabaseService {
   }
 
   /// Gets detailed activity for a specific friend: group breakdowns and simplified global debts.
-  static Future<Map<String, dynamic>> getFriendDetailedActivity(String email) async {
+  static Future<Map<String, dynamic>> getFriendDetailedActivity(
+    String email,
+  ) async {
     final lowerEmail = email.toLowerCase();
     double totalToCollect = 0.0;
     double totalToPay = 0.0;
@@ -666,17 +691,15 @@ class DatabaseService {
           totalToPay += net.abs();
         }
 
-        groupBreakdown.add({
-          'group': group,
-          'balance': net,
-        });
+        groupBreakdown.add({'group': group, 'balance': net});
       }
 
       // Calculate simplified debts for THIS group
       final groupTxs = simplifyDebts(groupBalances);
       // Filter for this friend
       for (var tx in groupTxs) {
-        if (tx.fromEmail.toLowerCase() == lowerEmail || tx.toEmail.toLowerCase() == lowerEmail) {
+        if (tx.fromEmail.toLowerCase() == lowerEmail ||
+            tx.toEmail.toLowerCase() == lowerEmail) {
           friendTransactions.add({
             'from': tx.fromEmail,
             'to': tx.toEmail,
@@ -703,7 +726,7 @@ class DatabaseService {
   }) async {
     final db = await database;
     final lowerEmail = userEmail.toLowerCase();
-    
+
     final results = await db.rawQuery(
       '''
       SELECT e.*, g.name as group_name, u.name as paid_by_name
@@ -717,7 +740,7 @@ class DatabaseService {
       ''',
       [lowerEmail, limit],
     );
-    
+
     return results;
   }
 
@@ -775,9 +798,6 @@ class DatabaseService {
       }
     }
 
-    return {
-      'groups': groupBalances,
-      'friends': friendBalancesList,
-    };
+    return {'groups': groupBalances, 'friends': friendBalancesList};
   }
 }
