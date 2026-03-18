@@ -11,6 +11,7 @@ import '../utils/debt_engine.dart';
 import '../utils/split_engine.dart';
 import '../utils/export_helper.dart';
 import '../widgets/add_member_full_screen_dialog.dart';
+import '../services/session_service.dart';
 import 'member_detail_screen.dart';
 import 'add_expense_screen.dart';
 
@@ -32,8 +33,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   bool _isLoadingMembers = true;
   bool _isLoadingExpenses = true;
   late TabController _tabController;
-  late String _groupName;
-  String? _currency;
+  String _groupName = '';
+  String _currencySymbol = '₹';
   DateTime? _startDate;
   DateTime? _endDate;
   double? _budget;
@@ -48,6 +49,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     _initGroupData();
     _loadMembers();
     _loadExpenses();
+    _loadGlobalCurrency();
 
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -56,10 +58,18 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   void _initGroupData() {
     _groupName = _currentGroup.name;
-    _currency = _currentGroup.currency;
     _startDate = _currentGroup.startDate;
     _endDate = _currentGroup.endDate;
     _budget = _currentGroup.budget;
+  }
+
+  Future<void> _loadGlobalCurrency() async {
+    final symbol = await SessionService.getCurrencySymbol();
+    if (mounted) {
+      setState(() {
+        _currencySymbol = symbol;
+      });
+    }
   }
 
   Future<void> _refreshGroup() async {
@@ -206,10 +216,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               final double totalAmount = _expenses
                                   .where((e) => !e.isSettlement)
                                   .fold(0.0, (sum, e) => sum + e.amount);
-                              final symbol =
-                                  _currency != null && _currency!.isNotEmpty
-                                  ? _currency!.split(' ').first
-                                  : '\$';
+                              final symbol = _currencySymbol;
 
                               return Container(
                                 padding: const EdgeInsets.symmetric(
@@ -482,9 +489,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   Widget _buildExpensesList(Color themeColor) {
-    final symbol = _currency != null && _currency!.isNotEmpty
-        ? _currency!.split(' ').first
-        : '\$';
+    final symbol = _currencySymbol;
 
     return Container(
       decoration: BoxDecoration(
@@ -616,9 +621,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   void _showSettlementDetailsDialog(Expense expense, Color themeColor) {
-    final symbol = _currency != null && _currency!.isNotEmpty
-        ? _currency!.split(' ').first
-        : '\$';
+    final symbol = _currencySymbol;
 
     showDialog(
       context: context,
@@ -856,22 +859,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 ),
                 _buildSettingsDivider(),
                 _buildSettingsTile(
-                  icon: HugeIconsStrokeRounded.dollarSquare,
-                  title: 'Set Currency',
-                  subtitle: _currency ?? 'Not set',
-                  color: themeColor,
-                  onTap: () async {
-                    await _showSetCurrencyDialog(themeColor);
-                    _refreshGroup();
-                  },
-                ),
-                _buildSettingsDivider(),
-                _buildSettingsTile(
                   icon: HugeIconsStrokeRounded.invoice03,
                   title: 'Set Budget',
                   subtitle: _budget != null
-                      ? '${_currency?.split(' ').first ?? ''} ${_budget!.toStringAsFixed(0)}'
-                            .trim()
+                      ? '$_currencySymbol ${_budget!.toStringAsFixed(0)}'.trim()
                       : 'Not set',
                   color: themeColor,
                   onTap: () async {
@@ -1198,288 +1189,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showSetCurrencyDialog(Color themeColor) {
-    final allCurrencies = [
-      {'code': '\$ USD', 'name': 'US Dollar'},
-      {'code': '₹ INR', 'name': 'Indian Rupee'},
-      {'code': '€ EUR', 'name': 'Euro'},
-      {'code': '£ GBP', 'name': 'British Pound'},
-      {'code': '¥ JPY', 'name': 'Japanese Yen'},
-      {'code': 'A\$ AUD', 'name': 'Australian Dollar'},
-      {'code': 'C\$ CAD', 'name': 'Canadian Dollar'},
-      {'code': 'د.إ AED', 'name': 'UAE Dirham'},
-      {'code': 'Fr CHF', 'name': 'Swiss Franc'},
-      {'code': '¥ CNY', 'name': 'Chinese Yuan'},
-      {'code': 'kr SEK', 'name': 'Swedish Krona'},
-      {'code': 'NZ\$ NZD', 'name': 'New Zealand Dollar'},
-      {'code': 'Mex\$ MXN', 'name': 'Mexican Peso'},
-      {'code': 'S\$ SGD', 'name': 'Singapore Dollar'},
-      {'code': 'HK\$ HKD', 'name': 'Hong Kong Dollar'},
-      {'code': 'kr NOK', 'name': 'Norwegian Krone'},
-      {'code': '₩ KRW', 'name': 'South Korean Won'},
-      {'code': '₺ TRY', 'name': 'Turkish Lira'},
-      {'code': '₽ RUB', 'name': 'Russian Ruble'},
-      {'code': 'R ZAR', 'name': 'South African Rand'},
-      {'code': 'R\$ BRL', 'name': 'Brazilian Real'},
-      {'code': 'RM MYR', 'name': 'Malaysian Ringgit'},
-      {'code': '₱ PHP', 'name': 'Philippine Peso'},
-      {'code': 'Rp IDR', 'name': 'Indonesian Rupiah'},
-      {'code': '฿ THB', 'name': 'Thai Baht'},
-      {'code': '₫ VND', 'name': 'Vietnamese Dong'},
-      {'code': '₪ ILS', 'name': 'Israeli New Shekel'},
-      {'code': 'Kč CZK', 'name': 'Czech Koruna'},
-    ];
-
-    String? selected = _currency;
-    List<Map<String, String>> displayedCurrencies = List.from(allCurrencies);
-    final searchController = TextEditingController();
-
-    return showDialog(
-      context: context,
-      useSafeArea: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return Dialog.fullscreen(
-              backgroundColor: const Color(0xFFECECEC),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Set Currency',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            icon: const HugeIcon(
-                              icon: HugeIconsStrokeRounded.cancel01,
-                              color: Colors.black,
-                              size: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Choose the currency for this group',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Search Field
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        controller: searchController,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search currency...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                          ),
-                          prefixIcon: SizedBox(
-                            width: 35,
-                            height: 35,
-                            child: Center(
-                              child: HugeIcon(
-                                icon: HugeIconsStrokeRounded.search01,
-                                color: Colors.grey[500]!,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(35),
-                            borderSide: BorderSide(
-                              color: Colors.grey[200]!,
-                              width: 1,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(35),
-                            borderSide: BorderSide(color: themeColor, width: 2),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(35),
-                            borderSide: const BorderSide(
-                              color: Colors.transparent,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        onChanged: (val) {
-                          setDialogState(() {
-                            final query = val.toLowerCase();
-                            displayedCurrencies = allCurrencies.where((c) {
-                              return c['code']!.toLowerCase().contains(query) ||
-                                  c['name']!.toLowerCase().contains(query);
-                            }).toList();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        children: displayedCurrencies.map((c) {
-                          final isSelected = selected == c['code'];
-                          return GestureDetector(
-                            onTap: () =>
-                                setDialogState(() => selected = c['code']),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? themeColor.withValues(alpha: 0.1)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? themeColor
-                                      : Colors.grey[100]!,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        c['code']!,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: isSelected
-                                              ? themeColor
-                                              : Colors.black87,
-                                        ),
-                                      ),
-                                      Text(
-                                        c['name']!,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[500],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (isSelected)
-                                    HugeIcon(
-                                      icon: HugeIconsStrokeRounded
-                                          .checkmarkCircle02,
-                                      color: themeColor,
-                                      size: 22,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    // Bottom Actions
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                side: BorderSide(color: Colors.grey[300]!),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                              ),
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                if (selected != null &&
-                                    widget.group.id != null) {
-                                  await DatabaseService.updateGroupCurrency(
-                                    widget.group.id!,
-                                    selected!,
-                                  );
-                                  setState(() => _currency = selected);
-                                }
-                                if (ctx.mounted) Navigator.pop(ctx);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: themeColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'Save',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
         );
       },
     );
@@ -2037,9 +1746,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             final member = _members[index];
             final balances = computeMemberBalances(_expenses, _allSplits);
             final memberBalance = balances[member.email.toLowerCase()];
-            final symbol = _currency != null && _currency!.isNotEmpty
-                ? _currency!.split(' ').first
-                : '\$';
+            final symbol = _currencySymbol;
 
             return Column(
               children: [
@@ -2383,9 +2090,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         _expenses.any((e) => e.paidByEmail.toLowerCase() == memberEmail) ||
         _allSplits.any((s) => s.userEmail.toLowerCase() == memberEmail);
 
-    final symbol = _currency != null && _currency!.isNotEmpty
-        ? _currency!.split(' ').first
-        : '\$';
+    final symbol = _currencySymbol;
 
     showDialog(
       context: context,
@@ -2546,9 +2251,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     final balances = computeMemberBalances(_expenses, _allSplits);
     final transactions = simplifyDebts(balances);
 
-    final symbol = _currency != null && _currency!.isNotEmpty
-        ? _currency!.split(' ').first
-        : '\$';
+    final symbol = _currencySymbol;
 
     showModalBottomSheet(
       context: context,

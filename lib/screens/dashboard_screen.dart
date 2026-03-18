@@ -22,6 +22,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _currentUserEmail;
   Map<String, String> _userNames = {};
   bool _isLoading = true;
+  String _currencySymbol = '₹';
 
   @override
   void initState() {
@@ -50,6 +51,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _dashboardFriends = balances['friends'] ?? [];
           _isLoading = false;
         });
+        // Load currency symbol separately to not block main data if possible, or just wait
+        final symbol = await SessionService.getCurrencySymbol();
+        if (mounted) {
+          setState(() {
+            _currencySymbol = symbol;
+          });
+        }
       }
     } else {
       if (mounted) {
@@ -239,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
 
                                 Text(
-                                  '₹${formatAmount(_totalToCollect)}',
+                                  '$_currencySymbol${formatAmount(_totalToCollect)}',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -294,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₹${formatAmount(_totalToPay)}',
+                                  '$_currencySymbol${formatAmount(_totalToPay)}',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -355,7 +363,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Icon(
                           Icons.done_all_rounded,
                           size: 40,
-                          color: Colors.green[300],
+                          color: themeColor,
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -531,7 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '₹${formatAmount(balance.abs())}',
+                  '$_currencySymbol${formatAmount(balance.abs())}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -646,7 +654,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           HugeIcon(
                             icon: HugeIconsStrokeRounded.checkmarkCircle02,
-                            color: Colors.green[600]!,
+                            color: themeColor,
                             size: 50,
                           ),
                           const SizedBox(height: 16),
@@ -723,7 +731,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₹${formatAmount(tx.amount)}',
+                                  '$_currencySymbol${formatAmount(tx.amount)}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: isOwedToMe
@@ -898,7 +906,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₹${formatAmount(amount)}',
+                                  '$_currencySymbol${formatAmount(amount)}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: isOwedToMe

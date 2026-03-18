@@ -46,6 +46,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   List<User> _sortedMembers = [];
   Set<String> _inactiveEmails = {};
   Map<String, User> _allLookupMembers = {};
+  String _currencySymbol = '₹';
 
   int seed = DateTime.now().millisecondsSinceEpoch;
 
@@ -197,8 +198,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   Future<void> _loadCurrentUser() async {
     _currentUserEmail = await SessionService.getUserEmail();
+    final symbol = await SessionService.getCurrencySymbol();
     if (_currentUserEmail != null) {
       setState(() {
+        _currencySymbol = symbol;
         if (widget.existingExpense == null) {
           _paidBy = widget.activeMembers.firstWhere(
             (m) => m.email.toLowerCase() == _currentUserEmail?.toLowerCase(),
@@ -254,11 +257,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         (sum, member) => sum + (_splitValues[member.email] ?? 0),
       );
       if ((sum - totalAmount).abs() > 0.01) {
-        String symbol = '\$';
-        if (widget.group.currency != null &&
-            widget.group.currency!.isNotEmpty) {
-          symbol = widget.group.currency!.split(' ').first;
-        }
+        String symbol = _currencySymbol;
         _showErrorSnackBar(
           'Sum of amounts ($symbol${sum.toStringAsFixed(2)}) must equal total ($symbol${totalAmount.toStringAsFixed(2)})',
         );
@@ -480,15 +479,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        (widget.group.currency != null &&
-                                                widget
-                                                    .group
-                                                    .currency!
-                                                    .isNotEmpty)
-                                            ? widget.group.currency!
-                                                  .split(' ')
-                                                  .first
-                                            : '\$',
+                                        _currencySymbol,
                                         style: TextStyle(
                                           color: themeColor,
                                           fontSize: 24,
@@ -662,13 +653,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                           ) ??
                                           0,
                                       memberCount: _selectedSplitMembers.length,
-                                      currency:
-                                          (widget.group.currency != null &&
-                                              widget.group.currency!.isNotEmpty)
-                                          ? widget.group.currency!
-                                                .split(' ')
-                                                .first
-                                          : '\$',
+                                      currency: _currencySymbol,
                                     ),
                                     style: TextStyle(
                                       fontSize: 12,
@@ -682,13 +667,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                   Text(
                                     sumMapAmount(
                                       _splitAmounts,
-                                      currency:
-                                          (widget.group.currency != null &&
-                                              widget.group.currency!.isNotEmpty)
-                                          ? widget.group.currency!
-                                                .split(' ')
-                                                .first
-                                          : '\$',
+                                      currency: _currencySymbol,
                                     ),
                                     style: TextStyle(
                                       fontSize: 12,
@@ -810,7 +789,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                             if (isSelected &&
                                                 _splitType == 'Equally')
                                               Text(
-                                                '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
+                                                '$_currencySymbol ${formatAmount(_splitAmounts[member.email] ?? 0)}',
                                                 style: TextStyle(
                                                   color: themeColor,
                                                   fontSize: 14,
@@ -830,7 +809,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                                           _splitType ==
                                                               'Shares')
                                                         Text(
-                                                          '${(widget.group.currency != null && widget.group.currency!.isNotEmpty) ? widget.group.currency!.split(' ').first : '\$'} ${formatAmount(_splitAmounts[member.email] ?? 0)}',
+                                                          '$_currencySymbol ${formatAmount(_splitAmounts[member.email] ?? 0)}',
                                                           style: TextStyle(
                                                             color: themeColor,
                                                             fontSize: 12,

@@ -1,12 +1,11 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/user_model.dart';
-
 import '../models/group_model.dart';
 import '../models/expense_model.dart';
 import '../utils/debt_engine.dart';
 
-/// Service to manage User data in SQLite (local relational storage).
+/// Service to manage app data in SQLite (local relational storage).
 class DatabaseService {
   static Database? _database;
 
@@ -23,63 +22,20 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'dutch.db');
 
+    // To consolidate migrations and clear data as requested:
+    // We are resetting to version 1.
+    // Use onDowngrade: onDatabaseDowngradeDelete to handle the transition from v11 to v1
+    // by recreating the database. Note: This will clear ALL data including users.
+    // If you wish to preserve users but clear everything else,
+    // call clearNonUserData() manually from the UI once.
+
     return await openDatabase(
       path,
-      version: 9,
+      version: 1,
       onCreate: (db, version) async {
         await _createTables(db);
       },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS friends (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_email TEXT NOT NULL,
-              friend_email TEXT NOT NULL,
-              UNIQUE(user_email, friend_email)
-            )
-          ''');
-        }
-        if (oldVersion < 3) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS groups (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT NOT NULL,
-              created_at TEXT NOT NULL
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS group_members (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              group_id INTEGER NOT NULL,
-              user_email TEXT NOT NULL,
-              FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE,
-              UNIQUE(group_id, user_email)
-            )
-          ''');
-        }
-        if (oldVersion < 4) {
-          await db.execute(
-            'ALTER TABLE groups ADD COLUMN created_by INTEGER REFERENCES users(id)',
-          );
-          await db.execute(
-            'ALTER TABLE group_members ADD COLUMN friend_id INTEGER REFERENCES friends(id)',
-          );
-        }
-        if (oldVersion < 5) {
-          await db.execute('ALTER TABLE groups ADD COLUMN currency TEXT');
-          await db.execute('ALTER TABLE groups ADD COLUMN start_date TEXT');
-          await db.execute('ALTER TABLE groups ADD COLUMN end_date TEXT');
-        }
-        if (oldVersion < 6) {
-          await db.execute('ALTER TABLE groups ADD COLUMN budget REAL');
-        }
-        if (oldVersion < 9) {
-          await db.execute(
-            'ALTER TABLE group_members ADD COLUMN is_active INTEGER DEFAULT 1',
-          );
-        }
-      },
+      onDowngrade: onDatabaseDowngradeDelete,
     );
   }
 
@@ -93,6 +49,18 @@ class DatabaseService {
       )
     ''');
     await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
+    // Ensure default currency exists
+    await db.insert(
+      'app_config',
+      {'key': 'currency', 'value': '₹ INR'},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS friends (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_email TEXT NOT NULL,
@@ -105,7 +73,6 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         created_by INTEGER,
-        currency TEXT,
         start_date TEXT,
         end_date TEXT,
         budget REAL,
@@ -151,13 +118,49 @@ class DatabaseService {
     ''');
   }
 
+  /// Clears database tables for friends, groups, and expenses but NOT users.
+  static Future<void> clearNonUserData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('expense_splits');
+      await txn.delete('expenses');
+      await txn.delete('group_members');
+      await txn.delete('groups');
+      await txn.delete('friends');
+      // Note: app_config is preserved as it contains global settings like currency
+    });
+  }
+
+  /// Configuration management
+  static Future<String?> getConfig(String key) async {
+    final db = await database;
+    final results = await db.query(
+      'app_config',
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (results.isNotEmpty) {
+      return results.first['value'] as String?;
+    }
+    return null;
+  }
+
+  static Future<void> updateConfig(String key, String value) async {
+    final db = await database;
+    await db.insert(
+      'app_config',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   /// Insert a user into SQLite
   static Future<int> insertUser(User user) async {
     final db = await database;
     return await db.insert('users', user.toMap());
   }
 
-  /// Find a user by email (case-insensitive)
   static Future<User?> getUserByEmail(String email) async {
     final db = await database;
     final results = await db.query(
@@ -376,17 +379,6 @@ class DatabaseService {
     return await db.update(
       'groups',
       {'name': newName},
-      where: 'id = ?',
-      whereArgs: [groupId],
-    );
-  }
-
-  /// Update a group's currency
-  static Future<int> updateGroupCurrency(int groupId, String currency) async {
-    final db = await database;
-    return await db.update(
-      'groups',
-      {'currency': currency},
       where: 'id = ?',
       whereArgs: [groupId],
     );

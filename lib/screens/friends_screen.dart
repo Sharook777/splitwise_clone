@@ -28,6 +28,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   String? _currentUserEmail;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchTimer;
+  String _currencySymbol = '₹';
 
   @override
   void initState() {
@@ -55,6 +56,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _friendActivity = activity;
         _isLoading = false;
       });
+      final symbol = await SessionService.getCurrencySymbol();
+      if (mounted) {
+        setState(() {
+          _currencySymbol = symbol;
+        });
+      }
     } else {
       setState(() => _isLoading = false);
     }
@@ -383,7 +390,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '₹${formatAmount(toCollect)}',
+                              '$_currencySymbol${formatAmount(toCollect)}',
                               style: TextStyle(
                                 color: Colors.green[600],
                                 fontSize: 11,
@@ -403,7 +410,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '₹${formatAmount(toPay)}',
+                              '$_currencySymbol${formatAmount(toPay)}',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 11,

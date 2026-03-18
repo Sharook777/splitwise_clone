@@ -28,6 +28,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
   List<Map<String, dynamic>> _debts = [];
   Map<String, String> _userNames = {};
   String? _currentUserEmail;
+  String _currencySymbol = '₹';
 
   @override
   void initState() {
@@ -65,6 +66,12 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
       _currentUserEmail = currentEmail;
       _isLoading = false;
     });
+    final symbol = await SessionService.getCurrencySymbol();
+    if (mounted) {
+      setState(() {
+        _currencySymbol = symbol;
+      });
+    }
   }
 
   @override
@@ -321,7 +328,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                   ),
                 ),
                 Text(
-                  '₹${formatAmount(amount)}',
+                  '$_currencySymbol${formatAmount(amount)}',
                   style: TextStyle(
                     color: textColor,
                     fontSize: 16,
@@ -387,8 +394,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         balance.abs() < 0.01
                             ? 'Settled'
                             : (isPositive
-                                  ? 'Owed ₹${formatAmount(balance)}'
-                                  : 'Owes ₹${formatAmount(balance.abs())}'),
+                                  ? 'Owed $_currencySymbol${formatAmount(balance)}'
+                                  : 'Owes $_currencySymbol${formatAmount(balance.abs())}'),
                         style: TextStyle(
                           color: balance.abs() < 0.01
                               ? Colors.grey
@@ -443,9 +450,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
 
     setState(() => _isLoading = false);
 
-    final symbol = group.currency != null && group.currency!.isNotEmpty
-        ? group.currency!.split(' ').first
-        : '₹';
+    final symbol = _currencySymbol;
 
     if (!mounted) return;
 
@@ -504,7 +509,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                       children: [
                         HugeIcon(
                           icon: HugeIconsStrokeRounded.checkmarkCircle02,
-                          color: Colors.green[600]!,
+                          color: themeColor,
                           size: 50,
                         ),
                         const SizedBox(height: 16),
@@ -694,8 +699,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         balance.abs() < 0.01
                             ? 'Settled'
                             : (isPositive
-                                  ? 'Owes ${widget.friend.name} ₹${formatAmount(balance)}'
-                                  : '${widget.friend.name} owes ₹${formatAmount(balance.abs())}'),
+                                  ? 'Owes ${widget.friend.name} $_currencySymbol${formatAmount(balance)}'
+                                  : '${widget.friend.name} owes $_currencySymbol${formatAmount(balance.abs())}'),
                         style: TextStyle(
                           color: balance.abs() < 0.01
                               ? Colors.grey
@@ -849,7 +854,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                 ),
                               ),
                               Text(
-                                '₹${formatAmount(amount)}',
+                                '$_currencySymbol${formatAmount(amount)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: isOwedToFriend

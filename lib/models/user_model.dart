@@ -16,8 +16,12 @@ class User extends HiveObject {
   @HiveField(2)
   final DateTime createdAt;
 
-  User({this.id, required this.name, required this.email, DateTime? createdAt})
-    : createdAt = createdAt ?? DateTime.now();
+  User({
+    this.id,
+    required this.name,
+    required this.email,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {

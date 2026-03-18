@@ -9,6 +9,7 @@ import '../models/user_model.dart';
 import '../services/database_service.dart';
 import '../utils/debt_engine.dart';
 import '../utils/split_engine.dart';
+import '../services/session_service.dart';
 
 class MemberDetailScreen extends StatefulWidget {
   final Group group;
@@ -34,11 +35,22 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   late List<Expense> _paidExpenses;
   late List<Expense> _borrowedExpenses;
   late MemberBalance _balance;
+  String _currencySymbol = '\$';
 
   @override
   void initState() {
     super.initState();
+    _loadCurrencySymbol();
     _computeData();
+  }
+
+  Future<void> _loadCurrencySymbol() async {
+    final symbol = await SessionService.getCurrencySymbol();
+    if (mounted) {
+      setState(() {
+        _currencySymbol = symbol;
+      });
+    }
   }
 
   void _computeData() {
@@ -72,19 +84,13 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
 
   double _totalSpent = 0;
 
-  String _getCurrencySymbol() {
-    if (widget.group.currency != null && widget.group.currency!.isNotEmpty) {
-      return widget.group.currency!.split(' ').first;
-    }
-    return '\$';
-  }
 
   String get _displayName => widget.member.name;
 
   @override
   Widget build(BuildContext context) {
     final themeColor = Theme.of(context).primaryColor;
-    final symbol = _getCurrencySymbol();
+    final symbol = _currencySymbol;
     final balance = _balance.balance;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -568,7 +574,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          '${_getCurrencySymbol()} ${formatAmount(tx.amount)}',
+                          '$_currencySymbol ${formatAmount(tx.amount)}',
                           style: TextStyle(
                             color: themeColor,
                             fontWeight: FontWeight.w600,
@@ -652,7 +658,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   void _showSettlementDetailsDialog(Expense expense, Color themeColor) {
-    final symbol = _getCurrencySymbol();
+    final symbol = _currencySymbol;
 
     showDialog(
       context: context,

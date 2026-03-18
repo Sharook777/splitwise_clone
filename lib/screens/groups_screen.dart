@@ -27,6 +27,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   String? _currentUserEmail;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchTimer;
+  String _currencySymbol = '₹';
 
   @override
   void initState() {
@@ -52,6 +53,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
         setState(() {
           _groups = groups;
         });
+        final symbol = await SessionService.getCurrencySymbol();
+        if (mounted) {
+          setState(() {
+            _currencySymbol = symbol;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error loading groups: $e');
@@ -362,7 +369,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
             ),
             SizedBox(width: 5),
             Text(
-              '${group.currency?.split(" ").first ?? "\$"}${formatAmount(group.totalSpend)}',
+              '$_currencySymbol${formatAmount(group.totalSpend)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
           ],
