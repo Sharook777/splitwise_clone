@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../services/session_service.dart';
 import '../widgets/add_friend_bottom_sheet.dart';
 import '../widgets/shimmer_loading.dart';
+import '../utils/split_engine.dart';
 import 'friend_detail_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   List<User> _friends = [];
+  Map<String, Map<String, double>> _friendActivity = {};
   List<User> _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
@@ -45,8 +47,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
     _currentUserEmail = await SessionService.getUserEmail();
     if (_currentUserEmail != null) {
       final friends = await DatabaseService.getFriends(_currentUserEmail!);
+      final activity = await DatabaseService.getFriendsActivity(
+        _currentUserEmail!,
+      );
       setState(() {
         _friends = friends;
+        _friendActivity = activity;
         _isLoading = false;
       });
     } else {
@@ -125,8 +131,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ? _buildEmptyState(themeColor)
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 10,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         itemCount: _isSearching
                             ? _searchResults.length
@@ -326,12 +332,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Hero(
           tag: 'friend-avatar-${user.email}',
           child: CircleAvatar(
             radius: 24,
-            backgroundColor: themeColor.withOpacity(0.1),
+            backgroundColor: themeColor.withValues(alpha: 0.1),
             child: Text(
               initial,
               style: TextStyle(
@@ -350,29 +356,81 @@ class _FriendsScreenState extends State<FriendsScreen> {
           user.email,
           style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
-        trailing: isSearchResult && !isAlreadyFriend
-            ? IconButton(
-                icon: const Icon(Icons.person_add_alt_1_rounded),
-                onPressed: () async {
-                  if (_currentUserEmail != null) {
-                    await DatabaseService.addFriend(
-                      _currentUserEmail!,
-                      user.email,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_friendActivity.containsKey(user.email.toLowerCase()))
+              Builder(
+                builder: (context) {
+                  final activity = _friendActivity[user.email.toLowerCase()]!;
+                  final toCollect = activity['toCollect'] ?? 0.0;
+                  final toPay = activity['toPay'] ?? 0.0;
+
+                  if (toCollect < 0.01 && toPay < 0.01) {
+                    return Text(
+                      'Settled',
+                      style: TextStyle(
+                        color: themeColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     );
-                    _loadFriends();
-                    setState(() {
-                      _isSearching = false;
-                      _searchController.clear();
-                      _searchResults = [];
-                    });
                   }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (toCollect >= 0.01)
+                        Row(
+                          children: [
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.circleArrowLeft02,
+                              size: 14,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '\$${formatAmount(toCollect)}',
+                              style: TextStyle(
+                                color: Colors.green[600],
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (toPay >= 0.01)
+                        Row(
+                          children: [
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.circleArrowRight02,
+                              size: 14,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '\$${formatAmount(toPay)}',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  );
                 },
-              )
-            : HugeIcon(
-                icon: HugeIconsStrokeRounded.arrowRight01,
-                size: 16,
-                color: Colors.grey[400]!,
               ),
+            const SizedBox(width: 10),
+            HugeIcon(
+              icon: HugeIconsStrokeRounded.arrowRight01,
+              size: 16,
+              color: Colors.grey[400]!,
+            ),
+          ],
+        ),
         onTap: () {
           Navigator.push(
             context,
@@ -397,11 +455,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ? HugeIconsStrokeRounded.search01
                   : HugeIconsStrokeRounded.userGroup,
               size: 80,
-              color: themeColor.withOpacity(0.3),
+              color: themeColor.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 20),
             Text(
-              _isSearching ? 'No friends found' : 'No friends yet',
+              _isSearching ? 'No friends found' : 'No friends added yet',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,

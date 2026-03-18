@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 
 import '../models/group_model.dart';
 import '../models/expense_model.dart';
+import '../utils/debt_engine.dart';
 
 /// Service to manage User data in SQLite (local relational storage).
 class DatabaseService {
@@ -601,5 +602,130 @@ class DatabaseService {
 
       return groupId;
     });
+  }
+
+  /// Calculates "To Collect" and "To Pay" for each friend across all their groups.
+  /// Result map: friendEmail -> {'toCollect': amount, 'toPay': amount}
+  static Future<Map<String, Map<String, double>>> getFriendsActivity(String userEmail) async {
+    final friends = await getFriends(userEmail);
+    final Map<String, Map<String, double>> activity = {};
+
+    for (var friend in friends) {
+      final friendEmail = friend.email.toLowerCase();
+      double totalToCollect = 0.0;
+      double totalToPay = 0.0;
+
+      // Find all groups this friend belongs to
+      final groups = await getGroupsForUser(friendEmail);
+
+      for (var group in groups) {
+        if (group.id == null) continue;
+
+        final expenses = await getGroupExpenses(group.id!);
+        final splits = await getAllExpenseSplitsForGroup(group.id!);
+        
+        final groupBalances = computeMemberBalances(expenses, splits);
+
+        // Calculate this friend's net position in this specific group
+        // If they are owed more than they owe overall in the group, we could just sum the transactions they are involved in.
+        // Or simply calculate their net position in the group:
+        final friendBalance = groupBalances[friendEmail];
+        if (friendBalance != null) {
+            double netBalance = friendBalance.balance;
+            if (netBalance > 0.01) {
+              totalToCollect += netBalance;
+            } else if (netBalance < -0.01) {
+              totalToPay += netBalance.abs();
+            }
+        }
+      }
+
+      activity[friendEmail] = {
+        'toCollect': totalToCollect,
+        'toPay': totalToPay,
+      };
+    }
+
+    return activity;
+  }
+
+  /// Gets detailed activity for a specific friend: group breakdowns and simplified global debts.
+  static Future<Map<String, dynamic>> getFriendDetailedActivity(String email) async {
+    final lowerEmail = email.toLowerCase();
+    double totalToCollect = 0.0;
+    double totalToPay = 0.0;
+    List<Map<String, dynamic>> groupBreakdown = [];
+    List<Map<String, dynamic>> friendTransactions = [];
+
+    final groups = await getGroupsForUser(lowerEmail);
+    for (var group in groups) {
+      if (group.id == null) continue;
+
+      final expenses = await getGroupExpenses(group.id!);
+      final splits = await getAllExpenseSplitsForGroup(group.id!);
+      final groupBalances = computeMemberBalances(expenses, splits);
+
+      final friendBalance = groupBalances[lowerEmail];
+      if (friendBalance != null) {
+        double net = friendBalance.balance;
+        if (net > 0.01) {
+          totalToCollect += net;
+        } else if (net < -0.01) {
+          totalToPay += net.abs();
+        }
+
+        groupBreakdown.add({
+          'group': group,
+          'balance': net,
+        });
+      }
+
+      // Calculate simplified debts for THIS group
+      final groupTxs = simplifyDebts(groupBalances);
+      // Filter for this friend
+      for (var tx in groupTxs) {
+        if (tx.fromEmail.toLowerCase() == lowerEmail || tx.toEmail.toLowerCase() == lowerEmail) {
+          friendTransactions.add({
+            'from': tx.fromEmail,
+            'to': tx.toEmail,
+            'amount': tx.amount,
+            'groupId': group.id,
+            'groupName': group.name,
+          });
+        }
+      }
+    }
+
+    return {
+      'toCollect': totalToCollect,
+      'toPay': totalToPay,
+      'groupBreakdown': groupBreakdown,
+      'friendTransactions': friendTransactions,
+    };
+  }
+
+  /// Gets the most recent expenses across all groups the user belongs to.
+  static Future<List<Map<String, dynamic>>> getGlobalRecentExpenses(
+    String userEmail, {
+    int limit = 5,
+  }) async {
+    final db = await database;
+    final lowerEmail = userEmail.toLowerCase();
+    
+    final results = await db.rawQuery(
+      '''
+      SELECT e.*, g.name as group_name, u.name as paid_by_name
+      FROM expenses e
+      JOIN groups g ON e.group_id = g.id
+      JOIN users u ON LOWER(e.paid_by_email) = LOWER(u.email)
+      JOIN group_members gm ON g.id = gm.group_id
+      WHERE LOWER(gm.user_email) = ? AND gm.is_active = 1 AND e.is_settlement = 0
+      ORDER BY e.date DESC
+      LIMIT ?
+      ''',
+      [lowerEmail, limit],
+    );
+    
+    return results;
   }
 }
