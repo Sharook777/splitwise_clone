@@ -116,7 +116,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             children: [
               // Custom Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: _isSearching
                     ? _buildSearchHeader(themeColor)
                     : _buildDefaultHeader(themeColor),
@@ -130,10 +130,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     : (_isSearching ? _searchResults : _friends).isEmpty
                     ? _buildEmptyState(themeColor)
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                         itemCount: _isSearching
                             ? _searchResults.length
                             : _friends.length,
@@ -379,43 +376,45 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (toCollect >= 0.01)
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            HugeIcon(
-                              icon: HugeIconsStrokeRounded.circleArrowLeft02,
-                              size: 14,
-                              color: Colors.green,
-                            ),
-                            const SizedBox(width: 5),
                             Text(
-                              '\$${formatAmount(toCollect)}',
+                              '₹${formatAmount(toCollect)}',
                               style: TextStyle(
                                 color: Colors.green[600],
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            const SizedBox(width: 5),
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.circleArrowLeft02,
+                              size: 14,
+                              color: Colors.green,
+                            ),
                           ],
                         ),
                       if (toPay >= 0.01)
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            HugeIcon(
-                              icon: HugeIconsStrokeRounded.circleArrowRight02,
-                              size: 14,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(width: 5),
                             Text(
-                              '\$${formatAmount(toPay)}',
+                              '₹${formatAmount(toPay)}',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            const SizedBox(width: 5),
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.circleArrowRight02,
+                              size: 14,
+                              color: Colors.red,
                             ),
                           ],
                         ),

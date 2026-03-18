@@ -57,8 +57,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
     setState(() {
       _toCollect = data['toCollect'] ?? 0.0;
       _toPay = data['toPay'] ?? 0.0;
-      _groups = List<Map<String, dynamic>>.from(data['groups'] ?? []);
-      _debts = List<Map<String, dynamic>>.from(data['debts'] ?? []);
+      _groups = List<Map<String, dynamic>>.from(data['groupBreakdown'] ?? []);
+      _debts = List<Map<String, dynamic>>.from(
+        data['friendTransactions'] ?? [],
+      );
       _userNames = nameMap;
       _currentUserEmail = currentEmail;
       _isLoading = false;
@@ -132,22 +134,33 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         ),
                         const SizedBox(height: 15),
                         // Badge Row inside Header
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 10,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            _buildHeaderBadge(
-                              'To Receive',
-                              _toCollect,
-                              HugeIconsStrokeRounded.arrowDown02,
-                            ),
-                            _buildHeaderBadge(
-                              'To Pay',
-                              _toPay,
-                              HugeIconsStrokeRounded.arrowUp02,
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 25),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildHeaderBadge(
+                                  'To Receive',
+                                  _toCollect,
+                                  HugeIconsStrokeRounded.arrowDown02,
+                                  Colors.green[50]!,
+                                  Colors.green[200]!,
+                                  Colors.green[800]!,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildHeaderBadge(
+                                  'To Pay',
+                                  _toPay,
+                                  HugeIconsStrokeRounded.arrowUp02,
+                                  Colors.red[50]!,
+                                  Colors.red[200]!,
+                                  Colors.red[800]!,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -268,43 +281,55 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
     );
   }
 
-  Widget _buildHeaderBadge(String label, double amount, dynamic icon) {
+  Widget _buildHeaderBadge(
+    String label,
+    double amount,
+    dynamic icon,
+    Color bgColor,
+    Color borderColor,
+    Color textColor,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(icon: icon, color: Colors.white, size: 16),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: HugeIcon(icon: icon, color: textColor, size: 16),
+          ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: textColor.withValues(alpha: 0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
                 ),
-              ),
-              Text(
-                '₹${formatAmount(amount)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                Text(
+                  '₹${formatAmount(amount)}',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -312,11 +337,12 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
   }
 
   Widget _buildGroupsTab() {
-    if (_groups.isEmpty)
+    if (_groups.isEmpty) {
       return _buildEmptyState(
         'No group membership',
         HugeIconsStrokeRounded.userGroup,
       );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -427,6 +453,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -507,7 +534,6 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                             toEmail == _currentUserEmail?.toLowerCase()
                             ? 'You'
                             : (emailToName[toEmail] ?? tx.toEmail);
-
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
@@ -569,9 +595,9 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: themeColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(25),
                       ),
                       elevation: 0,
                     ),
@@ -590,11 +616,12 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
   }
 
   Widget _buildFriendsTab() {
-    if (_debts.isEmpty)
+    if (_debts.isEmpty) {
       return _buildEmptyState(
         'No outstanding balances',
         HugeIconsStrokeRounded.contact,
       );
+    }
 
     // Aggregate debts by other person
     final friendEmail = widget.friend.email.toLowerCase();
@@ -714,6 +741,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
+      isDismissible: false,
       builder: (ctx) {
         return SafeArea(
           top: false,
@@ -826,7 +854,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                   fontWeight: FontWeight.bold,
                                   color: isOwedToFriend
                                       ? Colors.green[600]
-                                      : Colors.orange[800],
+                                      : Colors.red[800],
                                   fontSize: 16,
                                 ),
                               ),
@@ -844,14 +872,14 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: themeColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(25),
                       ),
                       elevation: 0,
                     ),
                     child: const Text(
-                      'Close',
+                      'Got it',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),

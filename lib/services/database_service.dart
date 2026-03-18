@@ -728,4 +728,64 @@ class DatabaseService {
     
     return results;
   }
+
+  /// Gets a summary of all pending balances for the user: group-wise and friend-wise.
+  static Future<Map<String, dynamic>> getDashboardBalances(
+    String userEmail,
+  ) async {
+    final lowerEmail = userEmail.toLowerCase();
+    List<Map<String, dynamic>> groupBalances = [];
+    Map<String, double> friendNetBalances = {};
+
+    final groups = await getGroupsForUser(lowerEmail);
+    for (var group in groups) {
+      if (group.id == null) continue;
+
+      final expenses = await getGroupExpenses(group.id!);
+      final splits = await getAllExpenseSplitsForGroup(group.id!);
+      final balances = computeMemberBalances(expenses, splits);
+
+      final myBalance = balances[lowerEmail];
+      if (myBalance != null && myBalance.balance.abs() > 0.01) {
+        groupBalances.add({
+          'id': group.id,
+          'name': group.name,
+          'balance': myBalance.balance,
+        });
+      }
+
+      // Friends balances in this group
+      final groupTxs = simplifyDebts(balances);
+      for (var tx in groupTxs) {
+        if (tx.fromEmail.toLowerCase() == lowerEmail) {
+          final friendEmail = tx.toEmail.toLowerCase();
+          friendNetBalances[friendEmail] =
+              (friendNetBalances[friendEmail] ?? 0) - tx.amount;
+        } else if (tx.toEmail.toLowerCase() == lowerEmail) {
+          final friendEmail = tx.fromEmail.toLowerCase();
+          friendNetBalances[friendEmail] =
+              (friendNetBalances[friendEmail] ?? 0) + tx.amount;
+        }
+      }
+    }
+
+    List<Map<String, dynamic>> friendBalancesList = [];
+    final allUsers = await getAllUsers();
+    final nameMap = {for (var u in allUsers) u.email.toLowerCase(): u.name};
+
+    for (var entry in friendNetBalances.entries) {
+      if (entry.value.abs() > 0.01) {
+        friendBalancesList.add({
+          'email': entry.key,
+          'name': nameMap[entry.key] ?? entry.key,
+          'balance': entry.value,
+        });
+      }
+    }
+
+    return {
+      'groups': groupBalances,
+      'friends': friendBalancesList,
+    };
+  }
 }

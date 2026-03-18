@@ -137,10 +137,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     : (_isSearching ? _searchResults : _groups).isEmpty
                     ? _buildEmptyState(themeColor)
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 10,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(15, 10, 15, 100),
                         itemCount: _isSearching
                             ? _searchResults.length
                             : _groups.length,
