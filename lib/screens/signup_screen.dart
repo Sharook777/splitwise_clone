@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../utils/page_transitions.dart';
+import '../utils/nav_controller.dart';
 import 'home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -39,10 +40,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (mounted) {
         // Navigate to Home and clear the navigation stack
-        Navigator.pushAndRemoveUntil(
+        NavController.setIndex(0);
+        Navigator.pushReplacement(
           context,
           AnimatedPageRoute(page: const HomeScreen()),
-          (route) => false,
         );
       }
     } catch (e) {
