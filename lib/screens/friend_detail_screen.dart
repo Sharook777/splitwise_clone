@@ -514,7 +514,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Settled up!',
+                          'All settled up!',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],

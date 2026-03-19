@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:intl/intl.dart';
+import 'package:calendar_date_picker2/calendar_date_picker2.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/session_service.dart';
@@ -557,19 +558,186 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 'dd MMM, yyyy',
                               ).format(_selectedDate),
                               onTap: () async {
-                                final date = await showDatePicker(
+                                final date = await showDialog<DateTime>(
                                   context: context,
-                                  initialDate: _selectedDate,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                  builder: (context, child) {
-                                    return Theme(
-                                      data: Theme.of(context).copyWith(
-                                        colorScheme: ColorScheme.light(
-                                          primary: themeColor,
+                                  barrierDismissible: false,
+                                  builder: (context) {
+                                    List<DateTime?> tempDates = [_selectedDate];
+                                    final config = CalendarDatePicker2Config(
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                      selectedDayHighlightColor: themeColor,
+
+                                      // calendarType:
+                                      //     CalendarDatePicker2Type.single,
+                                    );
+                                    return Dialog(
+                                      insetPadding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(15),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 15,
+                                                    ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        HugeIcon(
+                                                          icon:
+                                                              HugeIconsStrokeRounded
+                                                                  .calendar03,
+                                                          color: themeColor,
+                                                          size: 22,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                          'Select Date',
+                                                          style: TextStyle(
+                                                            fontSize: 15,
+                                                            color: Colors
+                                                                .grey[600],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    // TextButton.icon(
+                                                    //   onPressed: () {
+                                                    //     final today =
+                                                    //         DateTime.now();
+
+                                                    //     tempDates = [today];
+                                                    //     displayedMonth = today;
+                                                    //     setState(() {});
+                                                    //   },
+                                                    //   label: const Text(
+                                                    //     'Today',
+                                                    //   ),
+                                                    //   style:
+                                                    //       TextButton.styleFrom(
+                                                    //         foregroundColor:
+                                                    //             themeColor,
+                                                    //         visualDensity:
+                                                    //             VisualDensity
+                                                    //                 .compact,
+                                                    //         textStyle:
+                                                    //             const TextStyle(
+                                                    //               fontWeight:
+                                                    //                   FontWeight
+                                                    //                       .bold,
+                                                    //               fontSize: 13,
+                                                    //             ),
+                                                    //       ),
+                                                    // ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              CalendarDatePicker2(
+                                                config: config,
+                                                value: tempDates,
+                                                onValueChanged: (dates) {
+                                                  tempDates = dates;
+                                                },
+                                              ),
+                                              const SizedBox(height: 20),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: OutlinedButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                          ),
+                                                      style: OutlinedButton.styleFrom(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 14,
+                                                            ),
+                                                        side: BorderSide(
+                                                          color:
+                                                              Colors.grey[300]!,
+                                                        ),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                25,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        'Cancel',
+                                                        style: TextStyle(
+                                                          color:
+                                                              Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 2),
+                                                  Expanded(
+                                                    child: ElevatedButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(
+                                                          context,
+                                                          tempDates.first,
+                                                        );
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            themeColor,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 14,
+                                                            ),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                25,
+                                                              ),
+                                                        ),
+                                                        elevation: 0,
+                                                      ),
+                                                      child: Text(
+                                                        'Ok',
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                      child: child!,
                                     );
                                   },
                                 );
