@@ -324,10 +324,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     bool isSearchResult = false,
   }) {
     final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U';
-    // Check if user is already a friend if it's a search result
-    final isAlreadyFriend =
-        !isSearchResult ||
-        _friends.any((f) => f.email.toLowerCase() == user.email.toLowerCase());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -369,6 +365,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   final activity = _friendActivity[user.email.toLowerCase()]!;
                   final toCollect = activity['toCollect'] ?? 0.0;
                   final toPay = activity['toPay'] ?? 0.0;
+
+                  // final double netBalance =
+                  //     (activity['toCollect'] ?? 0.0) -
+                  //     (activity['toPay'] ?? 0.0);
 
                   if (toCollect < 0.01 && toPay < 0.01) {
                     return Text(

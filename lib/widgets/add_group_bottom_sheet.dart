@@ -15,8 +15,29 @@ class AddGroupBottomSheet extends StatefulWidget {
 
 class _AddGroupBottomSheetState extends State<AddGroupBottomSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _groupNameKey = GlobalKey<FormFieldState<String>>();
+  final _groupNameFocusNode = FocusNode();
   String _groupName = '';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupNameFocusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _groupNameFocusNode.removeListener(_onFocusChange);
+    _groupNameFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (mounted && !_groupNameFocusNode.hasFocus) {
+      _groupNameKey.currentState?.validate();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,9 +113,11 @@ class _AddGroupBottomSheetState extends State<AddGroupBottomSheet> {
                       child: Column(
                         children: [
                           _buildTextField(
+                            key: _groupNameKey,
                             label: 'Group Name',
                             hint: 'Enter group name',
                             icon: HugeIconsStrokeRounded.userGroup,
+                            focusNode: _groupNameFocusNode,
                             onSaved: (value) => _groupName = value!,
                             validator: (value) => value == null || value.isEmpty
                                 ? 'Please enter a group name'
@@ -152,6 +175,8 @@ class _AddGroupBottomSheetState extends State<AddGroupBottomSheet> {
     required dynamic icon,
     required FormFieldSetter<String> onSaved,
     required FormFieldValidator<String> validator,
+    Key? key,
+    FocusNode? focusNode,
     TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     final themeColor = Theme.of(context).primaryColor;
@@ -171,6 +196,8 @@ class _AddGroupBottomSheetState extends State<AddGroupBottomSheet> {
           ),
         ),
         TextFormField(
+          key: key,
+          focusNode: focusNode,
           textCapitalization: textCapitalization,
           onSaved: onSaved,
           validator: validator,

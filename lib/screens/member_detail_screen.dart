@@ -35,11 +35,16 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   late List<Expense> _paidExpenses;
   late List<Expense> _borrowedExpenses;
   late MemberBalance _balance;
+  late List<Expense> _localExpenses;
+  late List<ExpenseSplit> _localSplits;
+  bool _anySettlementDone = false;
   String _currencySymbol = '\$';
 
   @override
   void initState() {
     super.initState();
+    _localExpenses = widget.allExpenses;
+    _localSplits = widget.allSplits;
     _loadCurrencySymbol();
     _computeData();
   }
@@ -57,29 +62,45 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     final email = widget.member.email.toLowerCase();
 
     // Expenses paid by this member
-    _paidExpenses = widget.allExpenses
+    _paidExpenses = _localExpenses
         .where((e) => e.paidByEmail.toLowerCase() == email)
         .toList();
 
     // Expenses borrowed by this member (where they are in the splits)
-    final borrowedExpenseIds = widget.allSplits
+    final borrowedExpenseIds = _localSplits
         .where((s) => s.userEmail.toLowerCase() == email)
         .map((s) => s.expenseId)
         .toSet();
 
-    _borrowedExpenses = widget.allExpenses
-        .where((e) => borrowedExpenseIds.contains(e.id))
+    _borrowedExpenses = _localExpenses
+        .where(
+          (e) =>
+              borrowedExpenseIds.contains(e.id) &&
+              e.paidByEmail.toLowerCase() != email,
+        )
         .toList();
 
     // Total spent
     _totalSpent = _paidExpenses.fold(0.0, (sum, e) => sum + e.amount);
 
     // Balance
-    final balances = computeMemberBalances(
-      widget.allExpenses,
-      widget.allSplits,
-    );
+    final balances = computeMemberBalances(_localExpenses, _localSplits);
     _balance = balances[email] ?? MemberBalance(email: email);
+  }
+
+  Future<void> _refreshData() async {
+    final expenses = await DatabaseService.getGroupExpenses(widget.group.id!);
+    final splits = await DatabaseService.getAllExpenseSplitsForGroup(
+      widget.group.id!,
+    );
+
+    if (mounted) {
+      setState(() {
+        _localExpenses = expenses;
+        _localSplits = splits;
+        _computeData();
+      });
+    }
   }
 
   double _totalSpent = 0;
@@ -265,7 +286,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   top: 50,
                   left: 20,
                   child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => Navigator.pop(context, _anySettlementDone),
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -371,7 +392,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           final dt = DateFormat('MMM dd').format(expense.date);
 
           // Get the member's specific share of this expense
-          final memberSplit = widget.allSplits.firstWhere(
+          final memberSplit = _localSplits.firstWhere(
             (s) =>
                 s.expenseId == expense.id &&
                 s.userEmail.toLowerCase() == widget.member.email.toLowerCase(),
@@ -442,189 +463,231 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   void _showSettleUpDialog(Color themeColor) {
-    final balances = computeMemberBalances(
-      widget.allExpenses,
-      widget.allSplits,
-    );
-    final transactions = simplifyDebts(balances);
-    final email = widget.member.email.toLowerCase();
-
-    // Filter transactions involving this member
-    final myTransactions = transactions
-        .where(
-          (t) =>
-              t.fromEmail.toLowerCase() == email ||
-              t.toEmail.toLowerCase() == email,
-        )
-        .toList();
-
-    if (myTransactions.isEmpty) return;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       isDismissible: false,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-          ),
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final balances = computeMemberBalances(
+              _localExpenses,
+              _localSplits,
+            );
+            final transactions = simplifyDebts(balances);
+            final email = widget.member.email.toLowerCase();
+
+            // Filter transactions involving this member
+            final myTransactions = transactions
+                .where(
+                  (t) =>
+                      t.fromEmail.toLowerCase() == email ||
+                      t.toEmail.toLowerCase() == email,
+                )
+                .toList();
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Settle Up',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
-                        ),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Record a payment to settle the balance.',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                          height: 1.2,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Settle Up',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Record a payment to settle the balance.',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pop(ctx, true);
+                        },
+                        icon: HugeIcon(
+                          icon: HugeIconsStrokeRounded.cancel01,
+                          color: Colors.grey[400]!,
+                          size: 24,
                         ),
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: HugeIcon(
-                      icon: HugeIconsStrokeRounded.cancel01,
-                      color: Colors.grey[400]!,
-                      size: 24,
-                    ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 10),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: myTransactions.length,
-                  itemBuilder: (ctx, idx) {
-                    final tx = myTransactions[idx];
-                    final fromMember = widget.allMembers.firstWhere(
-                      (m) =>
-                          m.email.toLowerCase() == tx.fromEmail.toLowerCase(),
-                      orElse: () => User(
-                        id: 0,
-                        name: tx.fromEmail,
-                        email: tx.fromEmail,
-                        createdAt: DateTime.now(),
-                      ),
-                    );
-                    final toMember = widget.allMembers.firstWhere(
-                      (m) => m.email.toLowerCase() == tx.toEmail.toLowerCase(),
-                      orElse: () => User(
-                        id: 0,
-                        name: tx.toEmail,
-                        email: tx.toEmail,
-                        createdAt: DateTime.now(),
-                      ),
-                    );
-
-                    final fromName = fromMember.name;
-                    final toName = toMember.name;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 4,
-                        ),
-                        title: Row(
+                  const SizedBox(height: 10),
+                  if (myTransactions.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Column(
                           children: [
-                            Text(
-                              fromName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.checkmarkCircle02,
+                              color: themeColor,
+                              size: 40,
                             ),
-                            const SizedBox(width: 4),
-                            Text('pays'),
-                            const SizedBox(width: 4),
+                            const SizedBox(height: 10),
                             Text(
-                              toName,
-                              style: const TextStyle(
+                              'All settled up!',
+                              style: TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
                               ),
                             ),
                           ],
                         ),
-                        subtitle: Text(
-                          '$_currencySymbol ${formatAmount(tx.amount)}',
-                          style: TextStyle(
-                            color: themeColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: ElevatedButton.icon(
-                          onPressed: () => _recordPayment(tx),
-                          icon: const HugeIcon(
-                            icon: HugeIconsStrokeRounded.thumbsUp,
-                            color: Colors.white,
-                            size: 18,
-                            strokeWidth: 2,
-                          ),
-                          label: const Text('Settle Up'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: themeColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 0,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: myTransactions.length,
+                        itemBuilder: (ctx, idx) {
+                          final tx = myTransactions[idx];
+                          final fromMember = widget.allMembers.firstWhere(
+                            (m) =>
+                                m.email.toLowerCase() ==
+                                tx.fromEmail.toLowerCase(),
+                            orElse: () => User(
+                              id: 0,
+                              name: tx.fromEmail,
+                              email: tx.fromEmail,
+                              createdAt: DateTime.now(),
+                            ),
+                          );
+                          final toMember = widget.allMembers.firstWhere(
+                            (m) =>
+                                m.email.toLowerCase() ==
+                                tx.toEmail.toLowerCase(),
+                            orElse: () => User(
+                              id: 0,
+                              name: tx.toEmail,
+                              email: tx.toEmail,
+                              createdAt: DateTime.now(),
+                            ),
+                          );
+
+                          final fromName = fromMember.name;
+                          final toName = toMember.name;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 4,
+                              ),
+                              title: RichText(
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: fromName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const TextSpan(text: ' pays '),
+                                    TextSpan(
+                                      text: toName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              subtitle: Text(
+                                '$_currencySymbol ${formatAmount(tx.amount)}',
+                                style: TextStyle(
+                                  color: themeColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: ElevatedButton.icon(
+                                onPressed: () =>
+                                    _recordPayment(tx, setModalState),
+                                icon: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.thumbsUp,
+                                  color: Colors.white,
+                                  size: 18,
+                                  strokeWidth: 2,
+                                ),
+                                label: const Text('Settle Up'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: themeColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _recordPayment(DebtTransaction tx) async {
+  Future<void> _recordPayment(
+    DebtTransaction tx,
+    StateSetter setModalState,
+  ) async {
     final fromMember = widget.allMembers.firstWhere(
       (m) => m.email.toLowerCase() == tx.fromEmail.toLowerCase(),
       orElse: () => User(
@@ -662,8 +725,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     await DatabaseService.insertExpense(settlementExpense, splits);
 
     if (mounted) {
-      Navigator.pop(context); // Close bottom sheet
-      Navigator.pop(context, true); // Close detail screen with refresh signal
+      _anySettlementDone = true;
+      await _refreshData();
+      setModalState(() {});
     }
   }
 
@@ -735,13 +799,61 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     child: Column(
                       children: [
                         _buildDetailRow('Description', expense.description),
-                        SizedBox(height: 10),
-                        _buildDetailRow(
-                          'Amount',
-                          '$symbol ${formatAmount(expense.amount)}',
-                          valueColor: themeColor,
-                        ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
+                        _buildDetailRow('Amount', () {
+                          if (expense.isSettlement) {
+                            return '$symbol ${formatAmount(expense.amount)}';
+                          }
+                          final isPaid =
+                              expense.paidByEmail.toLowerCase() ==
+                              widget.member.email.toLowerCase();
+                          if (isPaid) {
+                            return '$symbol ${formatAmount(expense.amount)}';
+                          } else {
+                            final split = _localSplits.firstWhere(
+                              (s) =>
+                                  s.expenseId == expense.id &&
+                                  s.userEmail.toLowerCase() ==
+                                      widget.member.email.toLowerCase(),
+                              orElse: () => ExpenseSplit(
+                                expenseId: expense.id!,
+                                userEmail: widget.member.email,
+                                amount: 0,
+                              ),
+                            );
+                            return '$symbol ${formatAmount(split.amount)}';
+                          }
+                        }(), valueColor: Colors.red[600]),
+                        if (!expense.isSettlement &&
+                            expense.paidByEmail.toLowerCase() ==
+                                widget.member.email.toLowerCase())
+                          (() {
+                            final split = _localSplits.firstWhere(
+                              (s) =>
+                                  s.expenseId == expense.id &&
+                                  s.userEmail.toLowerCase() ==
+                                      widget.member.email.toLowerCase(),
+                              orElse: () => ExpenseSplit(
+                                expenseId: expense.id!,
+                                userEmail: widget.member.email,
+                                amount: 0,
+                              ),
+                            );
+                            if (split.amount > 0.01) {
+                              return Column(
+                                children: [
+                                  const SizedBox(height: 10),
+                                  _buildDetailRow(
+                                    'Your Share',
+                                    '$symbol ${formatAmount(split.amount)}',
+                                    valueColor: Colors.green[800],
+                                  ),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          })(),
+                        const SizedBox(height: 10),
                         _buildDetailRow(
                           'Date',
                           DateFormat('dd MMM yyyy').format(expense.date),

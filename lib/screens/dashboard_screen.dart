@@ -705,6 +705,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       RichText(
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                         text: TextSpan(
                                           style: const TextStyle(
                                             color: Colors.black,
@@ -785,7 +787,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final themeColor = Theme.of(context).primaryColor;
 
     try {
-      final data = await DatabaseService.getFriendDetailedActivity(otherEmail);
+      final data = await DatabaseService.getFriendshipActivity(
+        _currentUserEmail ?? '',
+        otherEmail,
+      );
       final List<Map<String, dynamic>> personBreakdown =
           List<Map<String, dynamic>>.from(data['friendTransactions'] ?? []);
 
@@ -887,24 +892,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            isOwedToMe ? otherName : 'You',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                      RichText(
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        text: TextSpan(
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 14,
                                           ),
-                                          const SizedBox(width: 4),
-                                          Text('pays'),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            isOwedToMe ? 'You' : otherName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
+                                          children: [
+                                            TextSpan(
+                                              text: isOwedToMe ? otherName : 'You',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                            const TextSpan(text: ' pays '),
+                                            TextSpan(
+                                              text: isOwedToMe ? 'You' : otherName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),

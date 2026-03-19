@@ -329,6 +329,7 @@ class DatabaseService {
       FROM groups g
       INNER JOIN group_members gm ON g.id = gm.group_id
       WHERE LOWER(gm.user_email) = ?
+      ORDER BY LOWER(g.name) ASC
     ''',
       [email.toLowerCase()],
     );
@@ -351,6 +352,7 @@ class DatabaseService {
       FROM groups g
       INNER JOIN group_members gm ON g.id = gm.group_id
       WHERE LOWER(gm.user_email) = ? AND LOWER(g.name) LIKE ?
+      ORDER BY LOWER(g.name) ASC
     ''',
       [email.toLowerCase(), '%${query.toLowerCase()}%'],
     );
@@ -714,6 +716,76 @@ class DatabaseService {
     return {
       'toCollect': totalToCollect,
       'toPay': totalToPay,
+      'groupBreakdown': groupBreakdown,
+      'friendTransactions': friendTransactions,
+    };
+  }
+
+  /// Calculates the relationship-specific balance and transaction list between two users.
+  static Future<Map<String, dynamic>> getFriendshipActivity(
+    String userEmail,
+    String otherEmail,
+  ) async {
+    final lowerUser = userEmail.toLowerCase();
+    final lowerOther = otherEmail.toLowerCase();
+    double toCollect = 0.0;
+    double toPay = 0.0;
+    List<Map<String, dynamic>> groupBreakdown = [];
+    List<Map<String, dynamic>> friendTransactions = [];
+
+    final userGroups = await getGroupsForUser(lowerUser);
+    final otherGroups = await getGroupsForUser(lowerOther);
+
+    final otherGroupIds = otherGroups.map((g) => g.id).toSet();
+    final sharedGroups = userGroups.where((g) => otherGroupIds.contains(g.id));
+
+    for (var group in sharedGroups) {
+      if (group.id == null) continue;
+
+      final expenses = await getGroupExpenses(group.id!);
+      final splits = await getAllExpenseSplitsForGroup(group.id!);
+      final groupBalances = computeMemberBalances(expenses, splits);
+
+      // Simplified debts for THIS group
+      final groupTxs = simplifyDebts(groupBalances);
+
+      double netInGroup = 0.0;
+
+      for (var tx in groupTxs) {
+        final from = tx.fromEmail.toLowerCase();
+        final to = tx.toEmail.toLowerCase();
+
+        if ((from == lowerUser && to == lowerOther) ||
+            (from == lowerOther && to == lowerUser)) {
+          final isOwedToMe = to == lowerUser;
+          final amount = tx.amount;
+
+          if (isOwedToMe) {
+            toCollect += amount;
+            netInGroup += amount;
+          } else {
+            toPay += amount;
+            netInGroup -= amount;
+          }
+
+          friendTransactions.add({
+            'from': tx.fromEmail,
+            'to': tx.toEmail,
+            'amount': amount,
+            'groupId': group.id,
+            'groupName': group.name,
+          });
+        }
+      }
+
+      if (netInGroup.abs() > 0.01) {
+        groupBreakdown.add({'group': group, 'balance': netInGroup});
+      }
+    }
+
+    return {
+      'toCollect': toCollect,
+      'toPay': toPay,
       'groupBreakdown': groupBreakdown,
       'friendTransactions': friendTransactions,
     };

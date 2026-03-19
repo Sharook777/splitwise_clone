@@ -14,15 +14,42 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameKey = GlobalKey<FormFieldState<String>>();
+  final _emailKey = GlobalKey<FormFieldState<String>>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _nameFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameFocusNode.addListener(_onNameFocusChange);
+    _emailFocusNode.addListener(_onEmailFocusChange);
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _nameFocusNode.removeListener(_onNameFocusChange);
+    _emailFocusNode.removeListener(_onEmailFocusChange);
+    _nameFocusNode.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onNameFocusChange() {
+    if (mounted && !_nameFocusNode.hasFocus) {
+      _nameKey.currentState?.validate();
+    }
+  }
+
+  void _onEmailFocusChange() {
+    if (mounted && !_emailFocusNode.hasFocus) {
+      _emailKey.currentState?.validate();
+    }
   }
 
   Future<void> _handleSignup() async {
@@ -153,8 +180,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _nameController,
+                     TextFormField(
+                       key: _nameKey,
+                       controller: _nameController,
+                       focusNode: _nameFocusNode,
                       textCapitalization: TextCapitalization.words,
                       maxLength: 25,
                       style: const TextStyle(
@@ -220,8 +249,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _emailController,
+                     TextFormField(
+                       key: _emailKey,
+                       controller: _emailController,
+                       focusNode: _emailFocusNode,
                       maxLength: 40,
                       style: const TextStyle(
                         fontSize: 17,

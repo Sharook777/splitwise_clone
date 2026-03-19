@@ -16,9 +16,41 @@ class AddFriendBottomSheet extends StatefulWidget {
 
 class _AddFriendBottomSheetState extends State<AddFriendBottomSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _nameKey = GlobalKey<FormFieldState<String>>();
+  final _emailKey = GlobalKey<FormFieldState<String>>();
+  final _nameFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
   String _name = '';
   String _email = '';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameFocusNode.addListener(_onNameFocusChange);
+    _emailFocusNode.addListener(_onEmailFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _nameFocusNode.removeListener(_onNameFocusChange);
+    _emailFocusNode.removeListener(_onEmailFocusChange);
+    _nameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onNameFocusChange() {
+    if (mounted && !_nameFocusNode.hasFocus) {
+      _nameKey.currentState?.validate();
+    }
+  }
+
+  void _onEmailFocusChange() {
+    if (mounted && !_emailFocusNode.hasFocus) {
+      _emailKey.currentState?.validate();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +126,11 @@ class _AddFriendBottomSheetState extends State<AddFriendBottomSheet> {
                       child: Column(
                         children: [
                           _buildTextField(
+                            key: _nameKey,
                             label: 'Name',
                             hint: 'Enter friend\'s name',
                             icon: HugeIconsStrokeRounded.user,
+                            focusNode: _nameFocusNode,
                             onSaved: (value) => _name = value!,
                             validator: (value) => value == null || value.isEmpty
                                 ? 'Please enter a name'
@@ -105,9 +139,11 @@ class _AddFriendBottomSheetState extends State<AddFriendBottomSheet> {
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
+                            key: _emailKey,
                             label: 'Email',
                             hint: 'Enter friend\'s email',
                             icon: HugeIconsStrokeRounded.mail01,
+                            focusNode: _emailFocusNode,
                             onSaved: (value) => _email = value!,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -172,6 +208,8 @@ class _AddFriendBottomSheetState extends State<AddFriendBottomSheet> {
     required dynamic icon,
     required FormFieldSetter<String> onSaved,
     required FormFieldValidator<String> validator,
+    Key? key,
+    FocusNode? focusNode,
     TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     final themeColor = Theme.of(context).primaryColor;
@@ -191,6 +229,8 @@ class _AddFriendBottomSheetState extends State<AddFriendBottomSheet> {
           ),
         ),
         TextFormField(
+          key: key,
+          focusNode: focusNode,
           textCapitalization: textCapitalization,
           onSaved: onSaved,
           validator: validator,

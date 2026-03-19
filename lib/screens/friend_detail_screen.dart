@@ -553,6 +553,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     RichText(
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                       text: TextSpan(
                                         style: const TextStyle(
                                           color: Colors.black,
@@ -833,28 +835,34 @@ class _FriendDetailScreenState extends State<FriendDetailScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          isOwedToFriend
-                                              ? otherName
-                                              : widget.friend.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                    RichText(
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      text: TextSpan(
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 14,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text('pays'),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          isOwedToFriend
-                                              ? widget.friend.name
-                                              : otherName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
+                                        children: [
+                                          TextSpan(
+                                            text: isOwedToFriend
+                                                ? otherName
+                                                : widget.friend.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          const TextSpan(text: ' pays '),
+                                          TextSpan(
+                                            text: isOwedToFriend
+                                                ? widget.friend.name
+                                                : otherName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
