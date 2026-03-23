@@ -158,7 +158,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     topRight: Radius.circular(35),
                   ),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

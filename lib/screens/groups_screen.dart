@@ -125,39 +125,38 @@ class _GroupsScreenState extends State<GroupsScreen> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFECECEC),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Custom Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                child: _isSearching
-                    ? _buildSearchField(themeColor)
-                    : _buildDefaultHeader(themeColor),
-              ),
+        body: Column(
+          children: [
+            const SizedBox(height: 50),
+            // Custom Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: _isSearching
+                  ? _buildSearchField(themeColor)
+                  : _buildDefaultHeader(themeColor),
+            ),
 
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _isSearchingData
-                    ? _buildSkeletonList()
-                    : (_isSearching ? _searchResults : _groups).isEmpty
-                    ? _buildEmptyState(themeColor)
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(15, 10, 15, 100),
-                        itemCount: _isSearching
-                            ? _searchResults.length
-                            : _groups.length,
-                        itemBuilder: (context, index) {
-                          final group = _isSearching
-                              ? _searchResults[index]
-                              : _groups[index];
-                          return _buildGroupTile(group, themeColor);
-                        },
-                      ),
-              ),
-            ],
-          ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _isSearchingData
+                  ? _buildSkeletonList()
+                  : (_isSearching ? _searchResults : _groups).isEmpty
+                  ? _buildEmptyState(themeColor)
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(15, 10, 15, 300),
+                      itemCount: _isSearching
+                          ? _searchResults.length
+                          : _groups.length,
+                      itemBuilder: (context, index) {
+                        final group = _isSearching
+                            ? _searchResults[index]
+                            : _groups[index];
+                        return _buildGroupTile(group, themeColor);
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

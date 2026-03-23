@@ -117,44 +117,43 @@ class _FriendsScreenState extends State<FriendsScreen> {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: Color(0xFFECECEC),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Custom Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                child: _isSearching
-                    ? _buildSearchHeader(themeColor)
-                    : _buildDefaultHeader(themeColor),
-              ),
+        backgroundColor: const Color(0xFFECECEC),
+        body: Column(
+          children: [
+            const SizedBox(height: 50),
+            // Custom Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: _isSearching
+                  ? _buildSearchHeader(themeColor)
+                  : _buildDefaultHeader(themeColor),
+            ),
 
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _isSearchingData
-                    ? _buildSkeletonList()
-                    : (_isSearching ? _searchResults : _friends).isEmpty
-                    ? _buildEmptyState(themeColor)
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(15, 10, 15, 100),
-                        itemCount: _isSearching
-                            ? _searchResults.length
-                            : _friends.length,
-                        itemBuilder: (context, index) {
-                          final user = _isSearching
-                              ? _searchResults[index]
-                              : _friends[index];
-                          return _buildUserTile(
-                            user,
-                            themeColor,
-                            isSearchResult: _isSearching,
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _isSearchingData
+                  ? _buildSkeletonList()
+                  : (_isSearching ? _searchResults : _friends).isEmpty
+                  ? _buildEmptyState(themeColor)
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(15, 10, 15, 300),
+                      itemCount: _isSearching
+                          ? _searchResults.length
+                          : _friends.length,
+                      itemBuilder: (context, index) {
+                        final user = _isSearching
+                            ? _searchResults[index]
+                            : _friends[index];
+                        return _buildUserTile(
+                          user,
+                          themeColor,
+                          isSearchResult: _isSearching,
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

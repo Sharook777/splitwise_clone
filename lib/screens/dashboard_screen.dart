@@ -467,7 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ],
 
-                const SizedBox(height: 120),
+                const SizedBox(height: 200),
               ],
             ),
           ),
@@ -902,14 +902,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           ),
                                           children: [
                                             TextSpan(
-                                              text: isOwedToMe ? otherName : 'You',
+                                              text: isOwedToMe
+                                                  ? otherName
+                                                  : 'You',
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                             const TextSpan(text: ' pays '),
                                             TextSpan(
-                                              text: isOwedToMe ? 'You' : otherName,
+                                              text: isOwedToMe
+                                                  ? 'You'
+                                                  : otherName,
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                               ),
