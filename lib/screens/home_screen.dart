@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: true,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
-          height: 75,
+          height: 85,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 curve: Curves.easeInOut,
                 child: HugeIcon(
                   icon: icon,
-                  size: 24.0,
+                  size: 26.0,
                   color: isActive ? Colors.white : Colors.black54,
                   strokeWidth: 2,
                 ),
@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? themeColor : Colors.black54,
               ),
@@ -147,14 +147,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? snapshot.data![0].toUpperCase()
                       : 'U';
                   return CircleAvatar(
-                    radius: 18,
+                    radius: 20,
                     backgroundColor: themeColor.withOpacity(
                       isActive ? 1.0 : 0.1,
                     ),
                     child: Text(
                       initial,
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 19,
                         fontWeight: FontWeight.bold,
                         color: isActive ? Colors.white : themeColor,
                       ),
@@ -167,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'Account',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? themeColor : Colors.black54,
               ),
