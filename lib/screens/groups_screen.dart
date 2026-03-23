@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:mobile_app/utils/split_engine.dart';
+import '../utils/split_engine.dart';
 import '../models/group_model.dart';
 import '../services/database_service.dart';
 import '../services/session_service.dart';
