@@ -1,4 +1,4 @@
-package com.example.dutch_app
+package com.siak.dutch_app
 
 import io.flutter.embedding.android.FlutterActivity
 
